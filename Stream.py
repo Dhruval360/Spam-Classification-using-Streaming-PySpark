@@ -15,7 +15,7 @@ from tqdm.auto import tqdm
 parser = argparse.ArgumentParser(
     description='Streams a file to a Spark Streaming Context')
 parser.add_argument('--file', '-f', help='File to stream', required=False,
-                    type=str, default="cifar")    # path to file for streaming
+                    type=str, default="spam")    # path to file for streaming
 parser.add_argument('--batch-size', '-b', help='Batch size',
                     required=False, type=int, default=100)  # default batch_size is 100
 parser.add_argument('--endless', '-e', help='Enable endless stream',
@@ -49,7 +49,7 @@ def sendCIFARBatchFileToSpark(tcp_connection, input_batch_file):
     # setting feature size to form the payload later
     feature_size = len(data[0])
     # iterate over batches of size batch_size
-    for image_index in tqdm(range(0, len(data)-batch_size+1, batch_size)):
+    for image_index in tqdm(range(0, len(data)-batch_size+2, batch_size)):
         # load batch of images
         image_data_batch = data[image_index:image_index+batch_size]
         image_label = labels[image_index:image_index +
@@ -69,22 +69,22 @@ def sendCIFARBatchFileToSpark(tcp_connection, input_batch_file):
             print("Either batch size is too big for the dataset or the connection was closed")
         except Exception as error_message:
             print(f"Exception thrown but was handled: {error_message}")
-        time.sleep(1)
+        time.sleep(5)
 
 
 def streamCIFARDataset(tcp_connection, dataset_type='cifar'):
     print("Starting to stream CIFAR data")
     CIFAR_BATCHES = [
         'data_batch_1',
-        # 'data_batch_2',   # uncomment to stream the second training dataset
-        # 'data_batch_3',   # uncomment to stream the third training dataset
-        # 'data_batch_4',   # uncomment to stream the fourth training dataset
-        # 'data_batch_5',    # uncomment to stream the fifth training dataset
+        'data_batch_2',   # uncomment to stream the second training dataset
+        'data_batch_3',   # uncomment to stream the third training dataset
+        'data_batch_4',   # uncomment to stream the fourth training dataset
+        'data_batch_5',    # uncomment to stream the fifth training dataset
         # 'test_batch'      # uncomment to stream the test dataset
     ]
     for batch in CIFAR_BATCHES:
         sendCIFARBatchFileToSpark(tcp_connection, batch)
-        time.sleep(1)
+        time.sleep(5)
 
 
 def sendPokemonBatchFileToSpark(tcp_connection, input_batch_file):
@@ -96,7 +96,7 @@ def sendPokemonBatchFileToSpark(tcp_connection, input_batch_file):
     data = batch_data['img']
     labels = batch_data['label']
     # iterate over batches of size batch_size
-    for image_index in tqdm(range(0, len(data)-batch_size+1, batch_size)):
+    for image_index in tqdm(range(0, len(data)-batch_size+2, batch_size)):
         # load batch of images
         image_data_batch = data[image_index:image_index+batch_size]
         image_label = labels[image_index:image_index +
@@ -116,7 +116,7 @@ def sendPokemonBatchFileToSpark(tcp_connection, input_batch_file):
             print("Either batch size is too big for the dataset or the connection was closed")
         except Exception as error_message:
             print(f"Exception thrown but was handled: {error_message}")
-        time.sleep(1)
+        time.sleep(5)
             
 
 def streamPokemonDataset(tcp_connection, dataset_type='pokemon'):
@@ -131,7 +131,7 @@ def streamPokemonDataset(tcp_connection, dataset_type='pokemon'):
     ]
     for batch in POKEMON_BATCHES:
         sendPokemonBatchFileToSpark(tcp_connection, batch)
-        time.sleep(1)
+        time.sleep(5)
 
 
 def streamDataset(tcp_connection, dataset_type):    # function to stream a dataset
@@ -144,7 +144,7 @@ def streamDataset(tcp_connection, dataset_type):    # function to stream a datas
     ]
     for dataset in DATASETS:
         streamCSVFile(tcp_connection, f'{dataset_type}/{dataset}.csv')
-        time.sleep(1)
+        time.sleep(5)
 
 
 def streamCSVFile(tcp_connection, input_file):    # stream a CSV file to Spark
@@ -175,20 +175,22 @@ def streamCSVFile(tcp_connection, input_file):    # stream a CSV file to Spark
         }
     }
     '''
-
+    print(f"Streaming {input_file}")
     df = pd.read_csv(input_file)  # load the entire dataset
     values = df.values.tolist()  # obtain the values of the dataset
     # loop through batches of size batch_size lines
-    for i in tqdm(range(0, len(values)-batch_size+1, batch_size)):
+    for i in tqdm(range(0, len(values)-batch_size+2, batch_size)):
         send_data = values[i:i+batch_size]  # load batch of rows
         payload = dict()    # create a payload
         # iterate over the batch
+        payload = {f"feature{i}" : [] for i in range(len(send_data[0]))}
         for mini_batch_index in range(len(send_data)):
-            payload[mini_batch_index] = dict()  # create a record
+            # payload[mini_batch_index] = dict()  # create a record
             # iterate over the features
             for feature_index in range(len(send_data[0])):
                 # add the feature to the record
-                payload[mini_batch_index][f'feature{feature_index}'] = send_data[mini_batch_index][feature_index]
+                # payload[mini_batch_index][f'feature{feature_index}'] = send_data[mini_batch_index][feature_index]
+                payload[f'feature{feature_index}'].append(send_data[mini_batch_index][feature_index])
         # print(payload)    # uncomment to see the payload being sent
         # encode the payload and add a newline character (do not forget the newline in your dataset)
         send_batch = (json.dumps(payload) + '\n').encode()
@@ -198,7 +200,7 @@ def streamCSVFile(tcp_connection, input_file):    # stream a CSV file to Spark
             print("Either batch size is too big for the dataset or the connection was closed")
         except Exception as error_message:
             print(f"Exception thrown but was handled: {error_message}")
-        time.sleep(1)
+        time.sleep(5)
 
 
 def streamFile(tcp_connection, input_file):  # stream a newline delimited file to Spark
@@ -213,7 +215,7 @@ def streamFile(tcp_connection, input_file):  # stream a newline delimited file t
         data = file.readlines()  # open the file and read every line
         total_lines = len(data)
         # loop through batches of size batch_size lines
-        for i in tqdm(range(0, total_lines-batch_size+1, batch_size)):
+        for i in tqdm(range(0, total_lines-batch_size+2, batch_size)):
             send_data = data[i:i+batch_size]    # load batch of lines
             # encode the payload and add a newline character (do not forget the newline in your dataset)
             send_batch = (json.dumps(send_data) + '\n').encode()
@@ -223,7 +225,7 @@ def streamFile(tcp_connection, input_file):  # stream a newline delimited file t
                 print("Either batch size is too big for the dataset or the connection was closed")
             except Exception as error_message:
                 print(f"Exception thrown but was handled: {error_message}")
-            time.sleep(1)
+            time.sleep(5)
 
 
 if __name__ == '__main__':
@@ -253,6 +255,8 @@ if __name__ == '__main__':
             _function(tcp_connection, input_file)
     else:
         _function(tcp_connection, input_file)
+
+    tcp_connection.close()
 
 # Setup your own dataset streamer by following the examples above.
 # If you wish to stream a single newline delimited file, use streamFile()
