@@ -73,29 +73,6 @@ def preProcess(X, numRecords):
     X = hvec.fit_transform(corpus)
     return X.toarray()
 
-# def trainBatch(X, y):
-#     X = preProcess(X)
-
-#     # Splitting data on train and test dataset
-#     X_train, X_test, y_train, y_test = train_test_split(X, y,  random_state=9, test_size=0.2)
-    
-#     global model
-#     model = model.partial_fit(X_train, y_train, np.unique(y))
-#     pred = model.predict(X_test)
-
-#     accuracy = accuracy_score(y_test, pred)
-#     precision = precision_score(y_test, pred, pos_label = 'spam')
-#     recall = recall_score(y_test, pred, pos_label = 'spam')
-#     conf_m = confusion_matrix(y_test, pred)
-
-#     print(f"accuracy: %.3f" %accuracy)
-#     print(f"precision: %.3f" %precision)
-#     print(f"recall: %.3f" %recall)
-#     print(f"confusion matrix: ")
-#     print(conf_m)
-
-#     return accuracy, precision, recall
-
 batchNum = 1
 def trainBatch(rdd):
   if not rdd.isEmpty():
@@ -122,6 +99,7 @@ def trainBatch(rdd):
 
     # print(GREEN)
     # print(X)
+    # print(y)
     # print(RESET)
 
     # Splitting data on train and test dataset
