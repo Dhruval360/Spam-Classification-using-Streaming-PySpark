@@ -1,0 +1,2 @@
+['subject,message,spam/ham\n', 'school letter,hi dude,sham\n', 'adult,money want,spam\n']
+[('subject', 'message', 'spam/ham'), ('school letter', 'hi dude', 'sham'), ('adult', 'money want', 'spam')]
