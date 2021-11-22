@@ -1,69 +1,41 @@
-# importing required libraries
 from pyspark import SparkContext
 from pyspark.sql.session import SparkSession
 from pyspark.streaming import StreamingContext
-from pyspark.sql.types import *
-from pyspark.sql import functions as F
-from pyspark.sql.functions import col, when
+from pyspark.sql.functions import col, when, explode, arrays_zip
 
-
-import numpy as np 
-from sklearn.datasets import load_files
-
-# Text cleaning and preprocessing
 import re
-import nltk
+import sys
+import numpy as np 
+from tqdm.auto import tqdm
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
-from nltk.stem import WordNetLemmatizer
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 from sklearn.model_selection import train_test_split
-
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import SGDClassifier
-from sklearn.linear_model import Perceptron
-
-
-from tqdm.auto import tqdm
-import sys
+from sklearn.linear_model import SGDClassifier, Perceptron
 
 # from pyspark.ml import Pipeline
 # from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAssembler
 # from pyspark.ml.feature import StopWordsRemover, Word2Vec, RegexTokenizer
 # from pyspark.ml.classification import LogisticRegression
 
+# Color coding the output to make it easier to find amongst the verbose output of Spark
 RED = '\033[91m'
 RESET = '\033[0m'
 GREEN = '\033[92m'
 
-# initializing spark session
-sc = SparkContext(appName = "Spam Classifier")
-spark = SparkSession(sc)
-
-# Initializing the streaming context 
-ssc = StreamingContext(
-    sc, 
-    batchDuration = (int(sys.argv[1]) if len(sys.argv) > 1 else 5)
-)
-
-# Create a DStream that will connect to hostname:port, like localhost:9991
-dstream = ssc.socketTextStream("localhost", 6100)
-
-
-#tf = TfidfVectorizer()
-hvec = HashingVectorizer(n_features = 2**9, alternate_sign = False) #***change this logically***
+hvec = HashingVectorizer(n_features = 2**9, alternate_sign = False)
 
 models = {
-    'Multinomial Naive Bayes':  MultinomialNB(),
+    'Multinomial Naive Bayes': MultinomialNB(),
     'SGD Classifier': SGDClassifier(loss = 'log'),
     'Perceptron': Perceptron()
 }
 
 def preProcess(X, numRecords):
     stemmer = PorterStemmer()
-    # lemmatizer = WordNetLemmatizer()
     corpus = []
     for i in tqdm(range(numRecords)):
         # Remove special symbols
@@ -81,6 +53,7 @@ def preProcess(X, numRecords):
         corpus.append(review)
     
     # Creating the Bag of Words model
+    global hvec
     X = hvec.fit_transform(corpus)
     return X.toarray()
 
@@ -89,7 +62,7 @@ def trainBatch(rdd):
   if not rdd.isEmpty():
     df = (
         spark.read.json(rdd, multiLine = True)
-        .withColumn("data", F.explode(F.arrays_zip("feature0", "feature1", "feature2")))
+        .withColumn("data", explode(arrays_zip("feature0", "feature1", "feature2")))
         .select("data.feature1", "data.feature2")
     )
 
@@ -114,7 +87,7 @@ def trainBatch(rdd):
     # print(RESET)
 
     # Splitting data on train and test dataset
-    X_train, X_test, y_train, y_test = train_test_split(X, y,  random_state=9, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(X, y,  random_state = 9, test_size = 0.2)
     
     global models, batchNum
     
@@ -147,11 +120,21 @@ def trainBatch(rdd):
         
     batchNum += 1
 
+if __name__ == "__main__":
+    # Initializing the spark session
+    sc = SparkContext(appName = "Spam Classifier")
+    spark = SparkSession(sc)
+    spark.sparkContext.setLogLevel('WARN')
 
-dstream.foreachRDD(lambda rdd: trainBatch(rdd))
+    # Initializing the streaming context 
+    ssc = StreamingContext(
+            sc, 
+            batchDuration = (int(sys.argv[1]) if len(sys.argv) > 1 else 5) # Default batchDuration is 5s
+          )
 
-# Start the computation
-ssc.start()             
+    # Create a DStream that will connect to hostname:port, like localhost:9991
+    dstream = ssc.socketTextStream("localhost", 6100)
+    dstream.foreachRDD(lambda rdd: trainBatch(rdd))
 
-# Wait for the computation to terminate
-ssc.awaitTermination()  
+    ssc.start()            # Start the computation
+    ssc.awaitTermination() # Wait for the computation to terminate
