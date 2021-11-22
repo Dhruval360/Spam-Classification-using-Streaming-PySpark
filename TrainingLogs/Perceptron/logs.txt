@@ -1,0 +1,162 @@
+Batch 1
+accuracy: 0.500
+precision: 0.000
+recall: 0.000
+confusion matrix:
+[[10  0]
+ [10  0]]
+-----------------------------------------------
+
+Batch 2
+accuracy: 0.500
+precision: 0.500
+recall: 1.000
+confusion matrix:
+[[ 0 10]
+ [ 0 10]]
+-----------------------------------------------
+
+Batch 3
+accuracy: 0.500
+precision: 0.000
+recall: 0.000
+confusion matrix:
+[[10  0]
+ [10  0]]
+-----------------------------------------------
+
+Batch 4
+accuracy: 0.500
+precision: 0.500
+recall: 1.000
+confusion matrix:
+[[ 0 10]
+ [ 0 10]]
+-----------------------------------------------
+
+Batch 5
+accuracy: 0.500
+precision: 0.500
+recall: 1.000
+confusion matrix:
+[[ 0 10]
+ [ 0 10]]
+-----------------------------------------------
+
+Batch 6
+accuracy: 0.300
+precision: 0.000
+recall: 0.000
+confusion matrix:
+[[ 6  0]
+ [14  0]]
+-----------------------------------------------
+
+Batch 7
+accuracy: 0.500
+precision: 0.000
+recall: 0.000
+confusion matrix:
+[[10  0]
+ [10  0]]
+-----------------------------------------------
+
+Batch 8
+accuracy: 0.700
+precision: 0.000
+recall: 0.000
+confusion matrix:
+[[14  0]
+ [ 6  0]]
+-----------------------------------------------
+
+Batch 9
+accuracy: 0.600
+precision: 0.600
+recall: 1.000
+confusion matrix:
+[[ 0  8]
+ [ 0 12]]
+-----------------------------------------------
+
+Batch 10
+accuracy: 0.500
+precision: 0.000
+recall: 0.000
+confusion matrix:
+[[10  0]
+ [10  0]]
+-----------------------------------------------
+
+Batch 11
+accuracy: 0.450
+precision: 0.000
+recall: 0.000
+confusion matrix:
+[[ 9  0]
+ [11  0]]
+-----------------------------------------------
+
+Batch 12
+accuracy: 0.500
+precision: 0.500
+recall: 1.000
+confusion matrix:
+[[ 0 10]
+ [ 0 10]]
+-----------------------------------------------
+
+Batch 13
+accuracy: 0.500
+precision: 0.500
+recall: 1.000
+confusion matrix:
+[[ 0 10]
+ [ 0 10]]
+-----------------------------------------------
+
+Batch 14
+accuracy: 0.500
+precision: 0.000
+recall: 0.000
+confusion matrix:
+[[10  0]
+ [10  0]]
+-----------------------------------------------
+
+Batch 15
+accuracy: 0.550
+precision: 0.550
+recall: 1.000
+confusion matrix:
+[[ 0  9]
+ [ 0 11]]
+-----------------------------------------------
+
+Batch 16
+accuracy: 0.250
+precision: 0.000
+recall: 0.000
+confusion matrix:
+[[ 5  0]
+ [15  0]]
+-----------------------------------------------
+
+Batch 17
+accuracy: 0.500
+precision: 0.000
+recall: 0.000
+confusion matrix:
+[[10  0]
+ [10  0]]
+-----------------------------------------------
+
+Batch 18
+accuracy: 0.600
+precision: 0.000
+recall: 0.000
+confusion matrix:
+[[12  0]
+ [ 8  0]]
+-----------------------------------------------
+

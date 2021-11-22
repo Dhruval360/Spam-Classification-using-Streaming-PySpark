@@ -21,8 +21,13 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, confu
 from sklearn.model_selection import train_test_split
 
 from sklearn.feature_extraction.text import HashingVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import SGDClassifier
+from sklearn.linear_model import Perceptron
+
 
 from tqdm.auto import tqdm
+import sys
 
 # from pyspark.ml import Pipeline
 # from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAssembler
@@ -36,9 +41,12 @@ GREEN = '\033[92m'
 # initializing spark session
 sc = SparkContext(appName = "Spam Classifier")
 spark = SparkSession(sc)
-    
+
 # Initializing the streaming context 
-ssc = StreamingContext(sc, batchDuration = 3)
+ssc = StreamingContext(
+    sc, 
+    batchDuration = (int(sys.argv[1]) if len(sys.argv) > 1 else 5)
+)
 
 # Create a DStream that will connect to hostname:port, like localhost:9991
 dstream = ssc.socketTextStream("localhost", 6100)
@@ -47,12 +55,15 @@ dstream = ssc.socketTextStream("localhost", 6100)
 #tf = TfidfVectorizer()
 hvec = HashingVectorizer(n_features = 2**9, alternate_sign = False) #***change this logically***
 
-from sklearn.naive_bayes import MultinomialNB
-model = MultinomialNB()
+models = {
+    'Multinomial Naive Bayes':  MultinomialNB(),
+    'SGD Classifier': SGDClassifier(loss = 'log'),
+    'Perceptron': Perceptron()
+}
 
 def preProcess(X, numRecords):
     stemmer = PorterStemmer()
-    lemmatizer = WordNetLemmatizer()
+    # lemmatizer = WordNetLemmatizer()
     corpus = []
     for i in tqdm(range(numRecords)):
         # Remove special symbols
@@ -79,7 +90,7 @@ def trainBatch(rdd):
     df = (
         spark.read.json(rdd, multiLine = True)
         .withColumn("data", F.explode(F.arrays_zip("feature0", "feature1", "feature2")))
-        .select("data.feature0", "data.feature1", "data.feature2")
+        .select("data.feature1", "data.feature2")
     )
 
     # print(RED)
@@ -105,33 +116,36 @@ def trainBatch(rdd):
     # Splitting data on train and test dataset
     X_train, X_test, y_train, y_test = train_test_split(X, y,  random_state=9, test_size=0.2)
     
-    global model
-    model = model.partial_fit(X_train, y_train, (0, 1))
-    pred = model.predict(X_test)
+    global models, batchNum
+    
+    for model in models:
+        models[model] = models[model].partial_fit(X_train, y_train, (0, 1))
+        pred = models[model].predict(X_test)
 
-    accuracy = accuracy_score(y_test, pred)
-    precision = precision_score(y_test, pred, pos_label = 1)
-    recall = recall_score(y_test, pred, pos_label = 1)
-    conf_m = confusion_matrix(y_test, pred)
+        accuracy = accuracy_score(y_test, pred)
+        precision = precision_score(y_test, pred, pos_label = 1)
+        recall = recall_score(y_test, pred, pos_label = 1)
+        conf_m = confusion_matrix(y_test, pred)
 
-    print(GREEN)
-    print(f"accuracy: %.3f" %accuracy)
-    print(f"precision: %.3f" %precision)
-    print(f"recall: %.3f" %recall)
-    print(f"confusion matrix: ")
-    print(conf_m)
-    print(RESET)
+        print(GREEN)
+        print(f"Model = {model}")
+        print(f"accuracy: %.3f" %accuracy)
+        print(f"precision: %.3f" %precision)
+        print(f"recall: %.3f" %recall)
+        print(f"confusion matrix: ")
+        print(conf_m)
+        print(RESET)
 
-    with open("./TrainingLogs.txt", "a") as f:
-        global batchNum
-        f.write(f"Batch {batchNum}")
-        f.write(f"\naccuracy: %.3f" %accuracy)
-        f.write(f"\nprecision: %.3f" %precision)
-        f.write(f"\nrecall: %.3f" %recall)
-        f.write(f"\nconfusion matrix:\n")
-        f.write(str(conf_m))
-        f.write("\n-----------------------------------------------\n\n")
-        batchNum += 1
+        with open(f"./TrainingLogs/{model}/logs.txt", "a") as f:
+            f.write(f"Batch {batchNum}")
+            f.write(f"\naccuracy: %.3f" %accuracy)
+            f.write(f"\nprecision: %.3f" %precision)
+            f.write(f"\nrecall: %.3f" %recall)
+            f.write(f"\nconfusion matrix:\n")
+            f.write(str(conf_m))
+            f.write("\n-----------------------------------------------\n\n")
+        
+    batchNum += 1
 
 
 dstream.foreachRDD(lambda rdd: trainBatch(rdd))
