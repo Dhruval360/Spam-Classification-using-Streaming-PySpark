@@ -137,7 +137,7 @@ def streamPokemonDataset(tcp_connection, dataset_type='pokemon'):
 def streamDataset(tcp_connection, dataset_type):    # function to stream a dataset
     # this is the function you need to recreate to work with custom datasets
     # if your dataset has multiple files (train, test, etc), modify and use this function to stream your dataset
-    print(f"Starting to stream {dataset_type} dataset")
+    print(f"Starting to stream {dataset_type} dataset....")
     DATASETS = [    # list of files in your dataset to stream
         "train",
         # "test"    # uncomment to stream the test dataset
@@ -192,6 +192,7 @@ def streamCSVFile(tcp_connection, input_file):    # stream a CSV file to Spark
         # print(payload)    # uncomment to see the payload being sent
         # encode the payload and add a newline character (do not forget the newline in your dataset)
         send_batch = (json.dumps(payload) + '\n').encode()
+        print(send_batch)
         try:
             tcp_connection.send(send_batch)  # send the payload to Spark
         except BrokenPipeError:  # this indicates that the message length of the payload is more than what is allowed via TCP
@@ -216,9 +217,12 @@ def streamFile(tcp_connection, input_file):  # stream a newline delimited file t
         for i in tqdm(range(0, total_lines-batch_size+1, batch_size)):
             send_data = data[i:i+batch_size]    # load batch of lines
             # encode the payload and add a newline character (do not forget the newline in your dataset)
+            # print(json.dumps(send_data))
             send_batch = (json.dumps(send_data) + '\n').encode()
+            # print(send_batch)
             try:
                 tcp_connection.send(send_batch)  # send the payload to Spark
+                print(send_data)
             except BrokenPipeError:
                 print("Either batch size is too big for the dataset or the connection was closed")
             except Exception as error_message:
@@ -237,11 +241,13 @@ if __name__ == '__main__':
     tcp_connection, _ = connectTCP()
 
     # to stream a custom dataset, uncomment the elif block and create your own dataset streamer function (or modify the existing one)
+    print("Input file is ",input_file)
     if input_file == "cifar":
         _function = streamCIFARDataset
     elif input_file == "pokemon":
         _function = streamPokemonDataset
     elif input_file in ["crime", "sentiment", "spam"]:
+        print("Spam file!!")
         _function = streamDataset
     # elif input_file == "my dataset":
     #     _function = streamMyDataset

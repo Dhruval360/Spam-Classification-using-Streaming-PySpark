@@ -1,17 +1,26 @@
-from pyspark import SparkContext
-from pyspark.streaming import StreamingContext
-from pyspark.sql.types import StructType
+from pyspark import SparkConf,SparkContext  #single application
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType #for every user
+from pyspark.streaming import StreamingContext #for streaming data
 import json
 
-# Create a local StreamingContext with two working thread and batch interval of 1 second
-sc = SparkContext("local[2]", "NetworkWordCount")
-ssc = StreamingContext(sc, 1)
+sc = SparkContext("local[2]","spam_ham") #paralleyly run spark on two threads
+spark = SparkSession.builder.config(conf=SparkConf()).getOrCreate() #create an spark session for the user if already not existsing
+spark.sparkContext.setLogLevel('WARN')
 
-# Create a DStream that will connect to hostname:port
-batch = ssc.socketTextStream("localhost", 6100)
+ssc = StreamingContext(sc,7) #streaming context ie entry point for fstreaming functionalities
 
-dstream = batch.map(lambda x: json.loads(x[1]))
-dstream.pprint()
+tableSchema = StructType().add("subject","string").add("message","string").add("spam/ham","string")
 
-ssc.start()             # Start the computation
-ssc.awaitTermination()  # Wait for the computation to terminate
+if __name__=="__main__":
+    txt_lines = ssc.socketTextStream('localhost',6100)
+    csv_rows = txt_lines.flatMap(lambda line : line.split("\n")).map(lambda x: json.loads(x))
+    csv_rows.pprint()
+
+    ssc.start()
+    ssc.awaitTermination()
+
+    
+
+
+
