@@ -28,7 +28,7 @@ hvec = HashingVectorizer(n_features = 2**9, alternate_sign = False)
 stemmer = PorterStemmer()
 
 models = {
-    'kmeans' : MiniBatchKMeans(n_clusters=2, random_state=0, batch_size=6)
+    'Clustering' : MiniBatchKMeans(n_clusters=2, random_state=0, batch_size=6)
 }
 
 
@@ -74,7 +74,7 @@ def trainBatch(rdd):
 
         X = preProcess(np.array(df.select("feature1").collect()))
         y = np.array(
-            df.withColumn("feature2", when(col("feature2") == 'spam', 1).otherwise(0))
+            df.withColumn("feature2", when(col("feature2") == 'spam', 0).otherwise(1))
                 .select("feature2")
                 .collect()
         )    
