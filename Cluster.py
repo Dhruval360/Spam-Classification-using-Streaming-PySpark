@@ -1,7 +1,7 @@
 from pyspark import SparkContext
 from pyspark.sql.session import SparkSession
 from pyspark.streaming import StreamingContext
-from pyspark.sql.functions import col, when, explode, arrays_zip
+from pyspark.sql.functions import col, when, explode, arrays_zip, concat, lit
 
 import re
 import joblib
@@ -28,7 +28,7 @@ hvec = HashingVectorizer(n_features = 2**9, alternate_sign = False)
 stemmer = PorterStemmer()
 
 models = {
-    'Clustering' : MiniBatchKMeans(n_clusters=2, random_state=0, batch_size=6)
+    'Clustering' : MiniBatchKMeans(n_clusters=2, random_state=0)
 }
 
 
@@ -69,12 +69,12 @@ def trainBatch(rdd):
         df = (
             spark.read.json(rdd, multiLine = True)
             .withColumn("data", explode(arrays_zip("feature0", "feature1", "feature2")))
-            .select("data.feature1", "data.feature2")
+            .select("data.feature0", "data.feature1", "data.feature2")
         )
-
-        X = preProcess(np.array(df.select("feature1").collect()))
+        df = df.withColumn('joint', concat(col('feature0'), lit(" "), col('feature1')))
+        X = preProcess(np.array(df.select("joint").collect()))
         y = np.array(
-            df.withColumn("feature2", when(col("feature2") == 'spam', 0).otherwise(1))
+            df.withColumn("feature2", when(col("feature2") == 'spam', 1).otherwise(0))
                 .select("feature2")
                 .collect()
         )    
