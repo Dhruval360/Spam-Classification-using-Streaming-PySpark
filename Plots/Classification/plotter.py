@@ -1,4 +1,5 @@
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import corr
 spark = SparkSession.builder.appName("plots").getOrCreate()
 import matplotlib.pyplot as plt
 import os
@@ -37,12 +38,45 @@ def csvPlotter(file,modelname):
     for a in metrics:
         metricPlotter(batchNum,a,df,modelname)
 
-def graphManager(path_to_logs):
-    validDirs = {"Multi Layer Perceptron","Perceptron","SGD Classifier"}
+def testingAccuracy(file,modelname):
+    df = spark.read.csv(file,header=True,sep=",")
+    pred = df.select('Prediction').rdd.map(
+        lambda x: x[0]
+    ).collect()
+
+    gt = df.select('GroundTruth').rdd.map(
+        lambda x: x[0]
+    ).collect()
+
+    correct = 0
+    for i in range(len(gt)):
+        if gt[i] == pred[i]:
+            correct+=1
+    printI(f'{modelname} : {correct/len(gt)}')
+
+    #1->spam 0->ham
+    return correct
+
+
+def graphManager(path_to_logs,mode=2): #2->training
+    validDirs = {"Multi Layer Perceptron","Perceptron","SGD Classifier","Multinomial Naive Bayes"}
+    attach=None
+
+    if mode == 1: #testing
+        attach = "TestLogs"
+    else:
+        attach = "TrainLogs"
+
     for dirname,subdirList,file in os.walk(path_to_logs):
         currFolder = dirname.split(os.sep)[-1] 
+
         if currFolder in validDirs:
-            csvPlotter(dirname + os.sep + 'logs.csv',currFolder)
+            if mode==2:
+                # csvPlotter(dirname + os.sep + attach + 'logs.csv',currFolder)
+                printI(dirname + os.sep + attach + os.sep + 'logs.csv')
+                csvPlotter(dirname + os.sep + attach + os.sep + 'logs.csv',currFolder)
+            else:
+                testingAccuracy(dirname + os.sep + attach + os.sep + 'logs.csv',currFolder)
 
 
-graphManager("./TrainingLogs")
+graphManager("./Logs",1)
