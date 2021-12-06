@@ -38,7 +38,8 @@ Machine-Learning-with-Spark-Streaming
 │   ├── test.csv
 │   └── train.csv
 ├── Stream.py                         [TCP Server that serves batches of the dataset as JSONs]
-└── Train.py                          [PySpark program to train and test the aforementioned models]
+├── Train.py                          [PySpark program to train and test the aforementioned models]
+└── Plotter.py                        [Used for the analysis of the training and testing metrics obtained]
 
 ```
 

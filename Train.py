@@ -230,11 +230,14 @@ numBatches = None
 
 
 batchNum = 1
-def testBatch(rdd, cluster = 0, model_num = 0, clusterlogfile = None, logfiles = None):
+def testBatch(rdd, cluster = 0, clusterlogfile = None, logfiles = None):
     '''
     Input:
         rdd: The test rdd upon which the model to run
-        model_num: Number of the model to be chosen for which testing is to happen. Default is the final_model.sav that is saved
+        cluster: Whether to use clustering / other models
+        clusterlogfile: File to which the clustering model's metrics are logged to
+        logfiles: A dictionary of log files pertaining to each supervised model present here.
+
     Output:
         Logs the information [batch number, prediction value, actual value] into the csv file in TrainLogs for each classifier
     '''

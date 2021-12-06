@@ -110,7 +110,7 @@ def allMetricPerModelPlotter(xdata):
 
 
 
-def graphManager(path_to_logs,mode=2): #2->training
+def graphManager(path_to_logs,mode=2, num = ''): #2->training
     validDirs = {"Multi Layer Perceptron","Perceptron","SGD Classifier","Multinomial Naive Bayes"}
     attach=None
 
@@ -127,19 +127,19 @@ def graphManager(path_to_logs,mode=2): #2->training
 
         if currFolder in validDirs:
             if mode==2:#training
-                # csvPlotter(dirname + os.sep + attach + 'logs.csv',currFolder)
-                printI(dirname + os.sep + attach + os.sep + 'logs.csv')
-                csvPlotter(dirname + os.sep + attach + os.sep + 'logs.csv',currFolder)
+                # csvPlotter(dirname + os.sep + attach + f'logs{num}.csv',currFolder)
+                printI(dirname + os.sep + attach + os.sep + f'logs{num}.csv')
+                csvPlotter(dirname + os.sep + attach + os.sep + f'logs{num}.csv',currFolder)
 
             elif mode==1: #testing
-                printI(dirname + os.sep + attach + os.sep + 'logs.csv')
-                res = testingAccuracy(dirname + os.sep + attach + os.sep + 'logs.csv',currFolder)
+                printI(dirname + os.sep + attach + os.sep + f'logs{num}.csv')
+                res = testingAccuracy(dirname + os.sep + attach + os.sep + f'logs{num}.csv',currFolder)
                 testingAcc.append(res)
                 y.append(currFolder)
             else: #3 
-                printI(dirname + os.sep + attach + os.sep + 'logs.csv')
+                printI(dirname + os.sep + attach + os.sep + f'logs{num}.csv')
                 printI(currFolder)
-                perModelAccum(dirname + os.sep + attach + os.sep + 'logs.csv',currFolder)
+                perModelAccum(dirname + os.sep + attach + os.sep + f'logs{num}.csv',currFolder)
     
     if mode==1:
 
@@ -152,7 +152,7 @@ def graphManager(path_to_logs,mode=2): #2->training
         plt.show()
 
     elif mode==3: #per model accumulate
-        allMetricPerModelPlotter(getXdata('./Logs/Multi Layer Perceptron/TrainLogs/logs.csv'))
+        allMetricPerModelPlotter(getXdata(f'./Logs/Multi Layer Perceptron/TrainLogs/logs{num}.csv'))
 
 '''
 for testing logs plots - 1
