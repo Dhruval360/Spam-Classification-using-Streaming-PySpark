@@ -9,7 +9,10 @@ RED = '\033[91m'
 RESET = '\033[0m'
 GREEN = '\033[92m'
 
-metrics={"Recall","Accuracy"}
+metrics={"Recall","Accuracy","Precision"}
+
+modelWiseData = {"Multi Layer Perceptron":[],"Perceptron":[],
+"SGD Classifier":[],"Multinomial Naive Bayes":[]}
 
 def printI(toPrint):
     print(RED)
@@ -22,7 +25,7 @@ def metricPlotter(xdata,metricName,df,modelname):
     plt.plot(xdata,ydata)
     plt.xlabel('batcNum')
     plt.ylabel(f'{metricName}')
-    plt.title(f"{metricName} vs BatchSize for {modelname}")
+    plt.title(f"{metricName} vs Batch for {modelname}")
     plt.show()
 
 def csvPlotter(file,modelname):
@@ -58,6 +61,51 @@ def testingAccuracy(file,modelname):
     #1->spam 0->ham
     return correct/len(gt)
 
+def perModelAccum(file,modelname):
+    df = spark.read.csv(file,header=True,sep=",")
+    
+    for a in metrics:
+        f  = df.select(f'{a}').rdd.map(
+            lambda x: x[0]
+        ).collect()
+
+        global modelWiseData
+        # print(modelname in modelWiseData.keys())
+        # print(modelWiseData[modelname])
+        # if a not in modelWiseData[modelname]:
+        #     modelWiseData[modelname].append({a:f})
+        # else:
+        #     printI("What!!??")
+        modelWiseData[modelname].append({a:f})
+
+def getXdata(file):
+    df = spark.read.csv(file,header=True,sep=",")
+    printI(df.show(5))
+    
+    batchNum = df.select('BatchNum').rdd.map(
+        lambda x: x[0]
+    ).collect()
+
+    
+    return [int(i) for i in batchNum]
+
+def allMetricPerModelPlotter(xdata):
+    fig = plt.figure(figsize = (50, 50)) 
+
+    for metric in metrics:
+        for model,allmetrics in modelWiseData.items():
+            # printI(allmetrics)
+            for iter,ametric in enumerate(allmetrics):
+                if list(ametric.keys())[0]==metric:
+                    i=iter
+            #print(allmetrics[i][metric])
+            y_data = [float(j) for j in allmetrics[i][metric]]
+            plt.plot(xdata,y_data,label=model)
+        plt.title(f"{metric} vs batches")
+        plt.legend()
+        plt.show()
+
+
 
 def graphManager(path_to_logs,mode=2): #2->training
     validDirs = {"Multi Layer Perceptron","Perceptron","SGD Classifier","Multinomial Naive Bayes"}
@@ -75,18 +123,24 @@ def graphManager(path_to_logs,mode=2): #2->training
         currFolder = dirname.split(os.sep)[-1] 
 
         if currFolder in validDirs:
-            if mode==2:
+            if mode==2:#training
                 # csvPlotter(dirname + os.sep + attach + 'logs.csv',currFolder)
                 printI(dirname + os.sep + attach + os.sep + 'logs.csv')
                 csvPlotter(dirname + os.sep + attach + os.sep + 'logs.csv',currFolder)
-            else:
+
+            elif mode==2: #testing
+                printI(dirname + os.sep + attach + os.sep + 'logs.csv')
                 res = testingAccuracy(dirname + os.sep + attach + os.sep + 'logs.csv',currFolder)
                 testingAcc.append(res)
                 y.append(currFolder)
+            else: #3 
+                printI(dirname + os.sep + attach + os.sep + 'logs.csv')
+                printI(currFolder)
+                perModelAccum(dirname + os.sep + attach + os.sep + 'logs.csv',currFolder)
     
     if mode==1:
 
-        fig = plt.figure(figsize = (10, 5)) 
+        fig = plt.figure(figsize = (50,50)) 
         bars = plt.bar(y,testingAcc,width=0.4)
         for bar in bars:
             yval = bar.get_height()
@@ -94,5 +148,9 @@ def graphManager(path_to_logs,mode=2): #2->training
             
         plt.show()
 
+    elif mode==3: #per model accumulate
+        allMetricPerModelPlotter(getXdata('./Logs/Multi Layer Perceptron/TrainLogs/logs.csv'))
+        input()
 
-graphManager("./Logs",1)
+
+graphManager("./Logs",3)
