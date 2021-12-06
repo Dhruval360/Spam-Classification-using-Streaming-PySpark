@@ -125,7 +125,7 @@ def trainBatch(rdd):
             print("\n\nSaving Model to disk...")
 
             joblib.dump(models[model], f"./Logs/{model}/Models/{batchNum}.sav") # sav?
-            
+            joblib.dump(models[model], f"./Logs/{model}/final_model.sav")
             print("Model saved to disk")
             print(RESET)
 
@@ -146,44 +146,42 @@ def trainBatch(rdd):
 numBatches = None
 
 '''
-TODO:
-For each model (have batch number as argument), log the testing accuracy over the entire testing dataset
+Input:
+    rdd: The test rdd upon which the model to run
+    model_num: Number of the model to be chosen for which testing is to happen. Default is the final_model.sav that is saved
+Output:
+    Logs the information [batch number, prediction value, actual value] into the csv file in TrainLogs for each classifier
 '''
-def testBatch(rdd): # TODO
+batchNum = 1
+def testBatch(rdd, model_num = None):
     if not rdd.isEmpty():
-        X, y = readStream(rdd)
+        
+        global batchNum
 
-        global numBatches
+        # Read stream and pre-process it
+        X, gt_values = readStream(rdd)
+        
+        # For all the classifiers load the right model, predict on the test rdd (i.e. X), Log to file
         for model in models:
-            ## Chahnge this completely
-            curModel = joblib.load(f"./Logs/{model}/Models/{batchNum}.sav")
-            for batchNum in range(numBatches):
-                pred = curModel.predict(X)
 
-                accuracy = accuracy_score(y, pred)
-                precision = precision_score(y, pred, pos_label = 1)
-                recall = recall_score(y, pred, pos_label = 1)
-                conf_m = confusion_matrix(y, pred)
+            if(model_num is not None):
+                final_model = joblib.load(f"./Logs/{model}/final_model.sav")
+            else:
+                final_model = joblib.load(f"./Logs/{model}/Models/{model_num}.sav")
+            
+            prediction = final_model.predict(X)
 
-                print(GREEN)
-                print(f"Model = {model}")
-                print(f"accuracy: %.3f" %accuracy)
-                print(f"precision: %.3f" %precision)
-                print(f"recall: %.3f" %recall)
-                print(f"confusion matrix: ")
-                print(conf_m)
-                print(RESET)
+            print(GREEN)
+            print(f"Model = {model}")
 
-                # with open(f"./TestingLogs/{model}/TestLogs/logs.txt", "a") as f:
-                #     f.write(f"Batch {batchNum}")
-                #     f.write(f"\naccuracy: %.3f" %accuracy)
-                #     f.write(f"\nprecision: %.3f" %precision)
-                #     f.write(f"\nrecall: %.3f" %recall)
-                #     f.write(f"\nconfusion matrix:\n")
-                #     f.write(str(conf_m))
-                #     f.write("\n-----------------------------------------------\n\n")
-                with open(f"./TestingLogs/{model}/TestLogs/logs.csv", "a") as f:
-                    f.write(f"{batchNum},{accuracy},{precision},{recall}\n")
+            with open(f"./Logs/{model}/TestLogs/logs.csv", "a") as f:
+                for i in zip(prediction, gt_values):
+                    f.write(f"{batchNum},{i[0]},{i[1][0]}\n")
+
+            print(f"Successfully logged to file...\n")
+            print(RESET)
+        f.close()
+        batchNum += 1
 
 parser = argparse.ArgumentParser(description = 'Trains and Tests multiple models using PySpark')
 parser.add_argument(
@@ -217,10 +215,14 @@ if __name__ == "__main__":
 
     if(args.clean): # Clear all logs and start afresh
         for model in models:
-            f = open(f"./Logs/{model}/TrainLogs/logs.txt", "w")
-            f.close()
+            # f = open(f"./Logs/{model}/TrainLogs/logs.txt", "w")
+            # f.close()
             f = open(f"./Logs/{model}/TrainLogs/logs.csv", "w")
             f.write("BatchNum,Accuracy,Precision,Recall\n")
+
+            f = open(f"./Logs/{model}/TestLogs/logs.csv", "w")
+            f.write("BatchNum,Prediction,GroundTruth\n")
+            
             f.close()
         print(f"\n{GREEN}Cleaned the Logs{RESET}\n")
         exit(0) # Will be removed later
