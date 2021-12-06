@@ -142,6 +142,8 @@ def trainBatch(rdd):
 
         batchNum += 1
 
+# TODO: Use rdd.map for regex instead of using multiprocessing
+
 numBatches = None
 def testBatch(rdd): # TODO
     if not rdd.isEmpty():
