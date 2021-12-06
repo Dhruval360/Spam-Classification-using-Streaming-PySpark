@@ -1,9 +1,8 @@
-import enum
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import corr
 spark = SparkSession.builder.appName("plots").getOrCreate()
 import matplotlib.pyplot as plt
 import os
+import sys
 
 RED = '\033[91m'
 RESET = '\033[0m'
@@ -21,23 +20,25 @@ def printI(toPrint):
 
 def metricPlotter(xdata,metricName,df,modelname): 
     ydata = df.select(metricName).rdd.map(lambda x: x[0]).collect()
+    ydata = [float(i) for i in ydata]
 
     plt.plot(xdata,ydata)
-    plt.xlabel('batcNum')
+    plt.xlabel('batches')
     plt.ylabel(f'{metricName}')
-    plt.title(f"{metricName} vs Batch for {modelname}")
+    plt.title(f"{metricName} vs Batches for {modelname}")
     plt.show()
 
 def csvPlotter(file,modelname):
     printI(file)
 
     df = spark.read.csv(file,header=True,sep=",")
-    printI(df.show(5))
+    # printI(df.show(5))
     
-    batchNum = df.select('BatchNum').rdd.map(
+    batchNum = df.select('Batches').rdd.map(
         lambda x: x[0]
     ).collect()
-    printI(batchNum)
+    # printI(batchNum)
+    batchNum = [int(i) for i in batchNum]
 
     for a in metrics:
         metricPlotter(batchNum,a,df,modelname)
@@ -47,10 +48,12 @@ def testingAccuracy(file,modelname):
     pred = df.select('Prediction').rdd.map(
         lambda x: x[0]
     ).collect()
+    pred = [int(i) for i in pred]
 
     gt = df.select('GroundTruth').rdd.map(
         lambda x: x[0]
     ).collect()
+    gt = [int(i) for i in gt]
 
     correct = 0
     for i in range(len(gt)):
@@ -128,7 +131,7 @@ def graphManager(path_to_logs,mode=2): #2->training
                 printI(dirname + os.sep + attach + os.sep + 'logs.csv')
                 csvPlotter(dirname + os.sep + attach + os.sep + 'logs.csv',currFolder)
 
-            elif mode==2: #testing
+            elif mode==1: #testing
                 printI(dirname + os.sep + attach + os.sep + 'logs.csv')
                 res = testingAccuracy(dirname + os.sep + attach + os.sep + 'logs.csv',currFolder)
                 testingAcc.append(res)
@@ -150,7 +153,15 @@ def graphManager(path_to_logs,mode=2): #2->training
 
     elif mode==3: #per model accumulate
         allMetricPerModelPlotter(getXdata('./Logs/Multi Layer Perceptron/TrainLogs/logs.csv'))
-        input()
 
+'''
+for testing logs plots - 1
+for traing log plots - 2
+for per metric graph - 3
+'''
+# graphManager("./Logs",1)
+#graphManager("./Logs",3)
+# graphManager("./Logs",2)
 
-graphManager("./Logs",3)
+if __name__ == "__main__":
+    graphManager(sys.argv[1],int(sys.argv[2]))
