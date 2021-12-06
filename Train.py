@@ -166,25 +166,26 @@ def testBatch(rdd, model_num = None):
         X, gt_values = readStream(rdd)
         
         # For all the classifiers load the right model, predict on the test rdd (i.e. X), Log to file
+        print(GREEN)
+        print(f"Processing Batch {batchNum}")
         for model in models:
 
-            if(model_num is not None):
+            if(model_num is None):
                 final_model = joblib.load(f"./Logs/{model}/final_model.sav")
             else:
                 final_model = joblib.load(f"./Logs/{model}/Models/{model_num}.sav")
             
-            prediction = final_model.predict(X)
+            predictions = final_model.predict(X)
 
-            print(GREEN)
             print(f"Model = {model}")
 
             with open(f"./Logs/{model}/TestLogs/logs.csv", "a") as f:
-                for i in zip(prediction, gt_values):
+                for i in zip(predictions, gt_values):
                     f.write(f"{batchNum},{i[0]},{i[1][0]}\n")
 
             print(f"Successfully logged to file...\n")
-            print(RESET)
-        f.close()
+        
+        print(RESET)
         batchNum += 1
 
 parser = argparse.ArgumentParser(description = 'Trains and Tests multiple models using PySpark')
@@ -219,15 +220,9 @@ if __name__ == "__main__":
 
     if(args.clean): # Clear all logs
         for model in models:
-            # f = open(f"./Logs/{model}/TrainLogs/logs.txt", "w")
-            # f.close()
-            f = open(f"./Logs/{model}/TrainLogs/logs.csv", "w")
-            f.write("BatchNum,Accuracy,Precision,Recall\n")
+            with open(f"./Logs/{model}/TrainLogs/logs.csv", "w") as f: f.write("BatchNum,Accuracy,Precision,Recall\n")
+            with open(f"./Logs/{model}/TestLogs/logs.csv", "w") as f: f.write("BatchNum,Prediction,GroundTruth\n")
 
-            f = open(f"./Logs/{model}/TestLogs/logs.csv", "w")
-            f.write("BatchNum,Prediction,GroundTruth\n")
-            
-            f.close()
         print(f"\n{GREEN}Cleaned the Logs{RESET}\n")
         exit(0)
 
