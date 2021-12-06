@@ -23,7 +23,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.cluster import MiniBatchKMeans
 
 # Color coding the output to make it easier to find amongst the verbose output of Spark
-RED = '\033[91m'
+RED = '\033[33m'
 RESET = '\033[0m'
 GREEN = '\033[92m'
 
@@ -121,12 +121,15 @@ def trainBatch(rdd):
     Saves the trained models and logs the training metrics obtained.
     '''
     if not rdd.isEmpty():
-        X, y = readStream(rdd)
-
         global classifiers, batchNum
+        X, y = readStream(rdd)
+        print(GREEN)
+        print(f"Processing Batch {batchNum} of size {len(X)}")
+
+
 
         for model in classifiers:
-            classifiers[model] = classifiers[model].partial_fit(X, y.reshape((len(y),)), np.unique(y)) # Why reshape
+            classifiers[model] = classifiers[model].partial_fit(X, y.reshape((len(y),)), np.unique(y))
             pred = classifiers[model].predict(X)
 
             accuracy = accuracy_score(y, pred)
@@ -134,7 +137,6 @@ def trainBatch(rdd):
             recall = recall_score(y, pred, labels = np.unique(y))
             conf_m = confusion_matrix(y, pred)
 
-            print(GREEN)
             print(f"Model = {model}")
             print(f"accuracy: %.3f" %accuracy)
             print(f"precision: %.3f" %precision)
@@ -147,7 +149,6 @@ def trainBatch(rdd):
             shutil.copyfile(f"./Logs/{model}/Models/{batchNum}.sav", f"./Logs/{model}/final_model.sav")
             
             print("Model saved to disk!")
-            print(RESET)
 
             # with open(f"./Logs/{model}/TrainLogs/logs.txt", "a") as f:
             #     f.write(f"Batch {batchNum}")
@@ -160,7 +161,8 @@ def trainBatch(rdd):
             
             with open(f"./Logs/{model}/TrainLogs/logs.csv", "a") as f:
                 f.write(f"{batchNum},{accuracy},{precision},{recall}\n")
-
+        
+        print(RESET)
         batchNum += 1
 
 numBatches = None
@@ -168,29 +170,28 @@ numBatches = None
 batchNum = 1
 def trainCluster(rdd):
     if not rdd.isEmpty():
-        X, y = readStream(rdd)
-
         global clustering_model, batchNum
+        X, y = readStream(rdd)
+        print(GREEN)
+        print(f"Processing Batch {batchNum} of size {len(X)}")
 
-        clustering_model = clustering_model.partial_fit(X) # Why reshape
+
+        clustering_model = clustering_model.partial_fit(X)
         pred = clustering_model.predict(X)
 
-        print(f"Model = Clustering")
-        
-        print(GREEN)
-        
         accuracy_spam_1 = accuracy_score(y, pred)
         precision_spam_1 = precision_score(y, pred, labels = np.unique(y))
         recall_spam_1 = recall_score(y, pred, labels = np.unique(y))
         conf_m_spam_1 = confusion_matrix(y, pred)
-
+        
+        print(f"Model = Clustering")
+        print(f"MEASURES WHEN SPAM IS ENCODED AS 1")
         print(f"accuracy: %.3f" %accuracy_spam_1)
         print(f"precision: %.3f" %precision_spam_1)
         print(f"recall: %.3f" %recall_spam_1)
         print(f"confusion matrix: ")
         print(conf_m_spam_1)
         
-        print(RESET)
         print(RED)
         for i in y:
             if(i[0] == 1):
@@ -198,14 +199,13 @@ def trainCluster(rdd):
             else:
                 i[0] = 1
         
-        print(f"MEASURES WHEN SPAM IS ENCODED AS 0")
 
         accuracy_spam_0 = accuracy_score(y, pred)
         precision_spam_0 = precision_score(y, pred, labels = np.unique(y))
         recall_spam_0 = recall_score(y, pred, labels = np.unique(y))
         conf_m_spam_0 = confusion_matrix(y, pred)
 
-        print(f"MEASURES WHEN SPAM IS ENCODED AS 1")
+        print(f"MEASURES WHEN SPAM IS ENCODED AS 0")
         print(f"accuracy: %.3f" %accuracy_spam_0)
         print(f"precision: %.3f" %precision_spam_0)
         print(f"recall: %.3f" %recall_spam_0)
@@ -214,37 +214,38 @@ def trainCluster(rdd):
         
         print("\n\nSaving Model to disk...")
 
-        joblib.dump(clustering_model, f"./Logs/Clustering/Models/{batchNum}.sav") # sav?
+        joblib.dump(clustering_model, f"./Logs/Clustering/Models/{batchNum}.sav")
         shutil.copyfile(f"./Logs/Clustering/Models/{batchNum}.sav", f"./Logs/Clustering/final_model.sav")
         print("Model saved to disk")
         print(RESET)
         
         with open(f"./Logs/Clustering/TrainLogs/logs.csv", "a") as f:
-            f.write(f"{batchNum},{accuracy_spam_0},{precision_spam_0},{recall_spam_0},{accuracy_spam_1},{precision_spam_1},{recall_spam_1}\n")
+            f.write(f"{batchNum},{accuracy_spam_1},{precision_spam_1},{recall_spam_1},{accuracy_spam_0},{precision_spam_0},{recall_spam_0}\n")
 
         batchNum += 1
 
 numBatches = None
 
 
-'''
-Input:
-    rdd: The test rdd upon which the model to run
-    model_num: Number of the model to be chosen for which testing is to happen. Default is the final_model.sav that is saved
-Output:
-    Logs the information [batch number, prediction value, actual value] into the csv file in TrainLogs for each classifier
-'''
 batchNum = 1
 def testBatch(rdd, cluster = 0, model_num = None):
+    '''
+    Input:
+        rdd: The test rdd upon which the model to run
+        model_num: Number of the model to be chosen for which testing is to happen. Default is the final_model.sav that is saved
+    Output:
+        Logs the information [batch number, prediction value, actual value] into the csv file in TrainLogs for each classifier
+    '''
     if not rdd.isEmpty():
         
         global batchNum, classifiers
 
         # Read stream and pre-process it
         X, gt_values = readStream(rdd)
-        
-        
+
         print(GREEN)
+        print(f"Processing Batch {batchNum} of size {len(X)}")
+        
         if(cluster == 0):
             # For all the classifiers load the right model, predict on the test rdd (i.e. X), Log to file
             print(f"Processing Batch {batchNum}")
