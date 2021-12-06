@@ -230,7 +230,7 @@ numBatches = None
 
 
 batchNum = 1
-def testBatch(rdd, cluster = 0, model_num = 0, clusterlogfile = None, logfiles = None):
+def testBatch(rdd, cluster = 0, model_num = None):
     '''
     Input:
         rdd: The test rdd upon which the model to run
@@ -239,7 +239,8 @@ def testBatch(rdd, cluster = 0, model_num = 0, clusterlogfile = None, logfiles =
         Logs the information [batch number, prediction value, actual value] into the csv file in TrainLogs for each classifier
     '''
     if not rdd.isEmpty():
-        global batchNum, classifiers, clustering_model
+        
+        global batchNum, classifiers
 
         # Read stream and pre-process it
         X, gt_values = readStream(rdd)
@@ -250,20 +251,36 @@ def testBatch(rdd, cluster = 0, model_num = 0, clusterlogfile = None, logfiles =
         print(GREEN)
         if(cluster == 0):
             # For all the classifiers load the right model, predict on the test rdd (i.e. X), Log to file
-            for model in classifiers:                
-                predictions = classifiers[model].predict(X)
+            for model in classifiers:
+                if(model_num is None):
+                    final_model = joblib.load(f"./Logs/{model}/final_model.sav")
+                else:
+                    final_model = joblib.load(f"./Logs/{model}/Models/{model_num}.sav")
+                
+                predictions = final_model.predict(X)
+
                 print(f"Model = {model}")
-                for i in zip(predictions, gt_values):
-                    logfiles[model].write(f"{batchNum},{i[0]},{i[1][0]}\n")
-                    logfiles[model].flush()
+
+                with open(f"./Logs/{model}/TestLogs/logs.csv", "a") as f:
+                    for i in zip(predictions, gt_values):
+                        f.write(f"{batchNum},{i[0]},{i[1][0]}\n")
+
                 print(f"Successfully logged to file...\n")
                 
-        else:            
-            predictions = clustering_model.predict(X)
+        else:
+            if(model_num is None):
+                final_model = joblib.load(f"./Logs/Clustering/final_model.sav")
+            else:
+                final_model = joblib.load(f"./Logs/Clustering/Models/{model_num}.sav")
+            
+            predictions = final_model.predict(X)
+        
             print(f"Model = Clustering")
-            for i in zip(predictions, gt_values):
-                clusterlogfile.write(f"{batchNum},{i[0]},{i[1][0]}\n")
-                clusterlogfile.flush()
+
+            with open(f"./Logs/Clustering/TestLogs/logs.csv", "a") as f:
+                for i in zip(predictions, gt_values):
+                    f.write(f"{batchNum},{i[0]},{i[1][0]}\n")
+
             print(f"Successfully logged to file...\n")
         
         print(RESET)
@@ -277,7 +294,6 @@ parser.add_argument(
     type = int,
     default = 5
 )
-
 parser.add_argument(
     '--mode', '-m',
     help = 'Mode of operation, Training [train] or Testing [test]',
@@ -285,7 +301,6 @@ parser.add_argument(
     type = str,
     default = 'train'
 )
-
 parser.add_argument(
     '--clean', '-c',
     help = 'Clear all logs',
@@ -301,16 +316,6 @@ parser.add_argument(
     type = int,
     default = 0
 )
-
-parser.add_argument(
-    '--model_num', '-mn',
-    help = 'Use models from this batch for testing',
-    required = False,
-    type = int,
-    default = 0
-)
-
-
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -347,39 +352,8 @@ if __name__ == "__main__":
             dstream.foreachRDD(lambda rdd: trainCluster(rdd))
         else:
             dstream.foreachRDD(lambda rdd: trainBatch(rdd))
-    
     elif mode.lower() == 'test': 
-        model_num = int(args.model_num)
-        clusterlogfile = None
-        logfiles = None
-        if cluster:
-            if(model_num == 0):
-                clusterlogfile = open(f"./Logs/Clustering/TestLogs/logs.csv", "w")
-                clusterlogfile.write("BatchNum,Prediction,GroundTruth\n") # Clearing logs
-                clustering_model = joblib.load(f"./Logs/Clustering/final_model.sav")
-            else:
-                clusterlogfile = open(f"./Logs/Clustering/TestLogs/logs{model_num}.csv", "w")
-                clusterlogfile.write("BatchNum,Prediction,GroundTruth\n") # Clearing logs
-                clustering_model = joblib.load(f"./Logs/Clustering/Models/{model_num}.sav")
-
-            clusterlogfile.flush()
-        else:
-            logfiles = {}
-            if model_num == 0: 
-                for model in classifiers:
-                    logfiles[model] = open(f"./Logs/{model}/TestLogs/logs.csv", "w")
-                    logfiles[model].write("BatchNum,Prediction,GroundTruth\n") # Clearing logs
-                    logfiles[model].flush()
-                    classifiers[model] = joblib.load(f"./Logs/{model}/final_model.sav")
-            else:
-                for model in classifiers:
-                    logfiles[model] = open(f"./Logs/{model}/TestLogs/logs{model_num}.csv", "w")
-                    logfiles[model].write("BatchNum,Prediction,GroundTruth\n") # Clearing logs
-                    logfiles[model].flush()
-                    classifiers[model] = joblib.load(f"./Logs/{model}/Models/{model_num}.sav")
-
-        dstream.foreachRDD(lambda rdd: testBatch(rdd, cluster, model_num, clusterlogfile, logfiles))
-    
+        dstream.foreachRDD(lambda rdd: testBatch(rdd, cluster))
     else: raise("Invalid argument to the argument mode of operation: Use '-m train' or '-m test'")
 
     ssc.start()            # Start the computation
