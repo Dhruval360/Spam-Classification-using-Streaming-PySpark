@@ -175,30 +175,10 @@ def trainCluster(rdd):
         clustering_model = clustering_model.partial_fit(X) # Why reshape
         pred = clustering_model.predict(X)
 
-        accuracy_spam_0 = accuracy_score(y, pred)
-        precision_spam_0 = precision_score(y, pred, labels = np.unique(y))
-        recall_spam_0 = recall_score(y, pred, labels = np.unique(y))
-        conf_m_spam_0 = confusion_matrix(y, pred)
-
         print(f"Model = Clustering")
         
         print(GREEN)
-        print(f"MEASURES WHEN SPAM IS ENCODED AS 1")
-        print(f"accuracy: %.3f" %accuracy_spam_0)
-        print(f"precision: %.3f" %precision_spam_0)
-        print(f"recall: %.3f" %recall_spam_0)
-        print(f"confusion matrix: ")
-        print(conf_m_spam_0)
         
-        print(RESET)
-        print(RED)
-        for i in y:
-            if(i[0] == 1):
-                i[0] = 0
-            else:
-                i[0] = 1
-        print(f"MEASURES WHEN SPAM IS ENCODED AS 1")
-
         accuracy_spam_1 = accuracy_score(y, pred)
         precision_spam_1 = precision_score(y, pred, labels = np.unique(y))
         recall_spam_1 = recall_score(y, pred, labels = np.unique(y))
@@ -209,8 +189,29 @@ def trainCluster(rdd):
         print(f"recall: %.3f" %recall_spam_1)
         print(f"confusion matrix: ")
         print(conf_m_spam_1)
+        
+        print(RESET)
+        print(RED)
+        for i in y:
+            if(i[0] == 1):
+                i[0] = 0
+            else:
+                i[0] = 1
+        
+        print(f"MEASURES WHEN SPAM IS ENCODED AS 0")
 
+        accuracy_spam_0 = accuracy_score(y, pred)
+        precision_spam_0 = precision_score(y, pred, labels = np.unique(y))
+        recall_spam_0 = recall_score(y, pred, labels = np.unique(y))
+        conf_m_spam_0 = confusion_matrix(y, pred)
 
+        print(f"MEASURES WHEN SPAM IS ENCODED AS 1")
+        print(f"accuracy: %.3f" %accuracy_spam_0)
+        print(f"precision: %.3f" %precision_spam_0)
+        print(f"recall: %.3f" %recall_spam_0)
+        print(f"confusion matrix: ")
+        print(conf_m_spam_0)
+        
         print("\n\nSaving Model to disk...")
 
         joblib.dump(clustering_model, f"./Logs/Clustering/Models/{batchNum}.sav") # sav?
@@ -326,7 +327,7 @@ if __name__ == "__main__":
             with open(f"./Logs/{model}/TrainLogs/logs.csv", "w") as f: f.write("BatchNum,Accuracy,Precision,Recall\n")
             with open(f"./Logs/{model}/TestLogs/logs.csv", "w") as f: f.write("BatchNum,Prediction,GroundTruth\n")
             
-        with open(f"./Logs/Clustering/TrainLogs/logs.csv", "w") as f: f.write("batchNum,accuracy_spam_0,precision_spam_0,recall_spam_0,accuracy_spam_1,precision_spam_1,recall_spam_1\n")
+        with open(f"./Logs/Clustering/TrainLogs/logs.csv", "w") as f: f.write("batchNum,accuracy_spam_1,precision_spam_1,recall_spam_1,accuracy_spam_0,precision_spam_0,recall_spam_0\n")
         with open(f"./Logs/Clustering/TestLogs/logs.csv", "w") as f: f.write("BatchNum,Prediction,GroundTruth\n")
 
         print(f"\n{GREEN}Cleared the Logs{RESET}\n")
