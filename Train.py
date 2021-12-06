@@ -9,6 +9,8 @@ import argparse
 import numpy as np
 
 from nltk.stem.porter import PorterStemmer
+from nltk.corpus import stopwords
+engStopWords = stopwords.words('english')
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 from sklearn.feature_extraction.text import HashingVectorizer
@@ -21,10 +23,10 @@ RED = '\033[91m'
 RESET = '\033[0m'
 GREEN = '\033[92m'
 
-hvec = HashingVectorizer(n_features = 2**9, alternate_sign = False)
-stemmer = PorterStemmer()
+hvec = HashingVectorizer(n_features = 2**9, alternate_sign = False) # TODO: Explain what this does
+stemmer = PorterStemmer() # Stems the words. Eg: Converts running, ran, run to run.
 
-models = {
+models = { # TODO: Explain Models
     'Multinomial Naive Bayes': MultinomialNB(),
     'SGD Classifier': SGDClassifier(
                             loss = 'log', 
@@ -50,26 +52,33 @@ models = {
                               )
 }
 
-
-patterns = ( # Comment what each pattern does
-    re.compile(r'\\r\\n'),
-    re.compile(r'[^a-zA-Z]'),
-    re.compile(r'\s+'),
-    re.compile(r'^b\s+'),
+patterns = ( 
+    re.compile(r'\\r\\n'),    # Select Carriage returns and new lines
+    re.compile(r'[^a-zA-Z]'), # Select anything that isn't an alphabet
+    re.compile(r'\s+'),       # Select multiple consecutive spaces
+    re.compile(r'^b\s+'),     # Select Word boundaries before consecutive spaces
 )
 
-def preProcess(record): # Why import stopwords here?
-    from nltk.corpus import stopwords
 
+def preProcess(record):
+    '''
+    Pre Processes text 
+    Substitutes Carriage returns, New lines, Non alphabetic characters and Multiple consecutive spaces with a signle space.
+    Stems the words in the cleaned text
+    Returns a preprocessed string
+    '''
     review = record.lower()
     for pattern in patterns: review = pattern.sub(' ', review)
 
     global stemmer
-    review = [stemmer.stem(word) for word in review.split() if word not in stopwords.words('english')]
+    review = [stemmer.stem(word) for word in review.split() if word not in engStopWords]
     review = ' '.join(review)
     return review
 
 def readStream(rdd):
+    '''
+    Reads a JSON rdd into the given format
+    '''
     global hvec
     df = (
             spark.read.json(rdd, multiLine = True)
@@ -115,12 +124,12 @@ def trainBatch(rdd):
             print(conf_m)
             print("\n\nSaving Model to disk...")
 
-            joblib.dump(models[model], f"./TrainingLogs/{model}/Models/{batchNum}.sav") # sav?
+            joblib.dump(models[model], f"./Logs/{model}/Models/{batchNum}.sav") # sav?
             
             print("Model saved to disk")
             print(RESET)
 
-            # with open(f"./TrainingLogs/{model}/logs.txt", "a") as f:
+            # with open(f"./Logs/{model}/TrainLogs/logs.txt", "a") as f:
             #     f.write(f"Batch {batchNum}")
             #     f.write(f"\naccuracy: %.3f" %accuracy)
             #     f.write(f"\nprecision: %.3f" %precision)
@@ -129,7 +138,7 @@ def trainBatch(rdd):
             #     f.write(str(conf_m))
             #     f.write("\n-----------------------------------------------\n\n")
             
-            with open(f"./TrainingLogs/{model}/logs.csv", "a") as f:
+            with open(f"./Logs/{model}/TrainLogs/logs.csv", "a") as f:
                 f.write(f"{batchNum},{accuracy},{precision},{recall}\n")
 
         batchNum += 1
@@ -147,7 +156,7 @@ def testBatch(rdd): # TODO
         global numBatches
         for model in models:
             ## Chahnge this completely
-            curModel = joblib.load(f"./TrainingLogs/{model}/Models/{batchNum}.sav")
+            curModel = joblib.load(f"./Logs/{model}/Models/{batchNum}.sav")
             for batchNum in range(numBatches):
                 pred = curModel.predict(X)
 
@@ -165,7 +174,7 @@ def testBatch(rdd): # TODO
                 print(conf_m)
                 print(RESET)
 
-                # with open(f"./TestingLogs/{model}/logs.txt", "a") as f:
+                # with open(f"./TestingLogs/{model}/TestLogs/logs.txt", "a") as f:
                 #     f.write(f"Batch {batchNum}")
                 #     f.write(f"\naccuracy: %.3f" %accuracy)
                 #     f.write(f"\nprecision: %.3f" %precision)
@@ -173,7 +182,7 @@ def testBatch(rdd): # TODO
                 #     f.write(f"\nconfusion matrix:\n")
                 #     f.write(str(conf_m))
                 #     f.write("\n-----------------------------------------------\n\n")
-                with open(f"./TestingLogs/{model}/logs.csv", "a") as f:
+                with open(f"./TestingLogs/{model}/TestLogs/logs.csv", "a") as f:
                     f.write(f"{batchNum},{accuracy},{precision},{recall}\n")
 
 parser = argparse.ArgumentParser(description = 'Trains and Tests multiple models using PySpark')
@@ -208,11 +217,12 @@ if __name__ == "__main__":
 
     if(args.clean): # Clear all logs and start afresh
         for model in models:
-            f = open(f"./TrainingLogs/{model}/logs.txt", "w")
+            f = open(f"./Logs/{model}/TrainLogs/logs.txt", "w")
             f.close()
-            f = open(f"./TrainingLogs/{model}/logs.csv", "w")
+            f = open(f"./Logs/{model}/TrainLogs/logs.csv", "w")
             f.write("BatchNum,Accuracy,Precision,Recall\n")
             f.close()
+        print(f"\n{GREEN}Cleaned the Logs{RESET}\n")
         exit(0) # Will be removed later
 
     # Initializing the spark session
