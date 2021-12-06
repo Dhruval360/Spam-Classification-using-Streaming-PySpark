@@ -10,6 +10,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 sleepTime = 100
+mode = None
 
 # Run using python3 stream.py to use CIFAR dataset and default batch_size as 100
 # Run using python3 stream.py -f <input_file> -b <batch_size> to use a custom file/dataset and batch size
@@ -24,6 +25,14 @@ parser.add_argument('--endless', '-e', help='Enable endless stream',
                     required=False, type=bool, default=False)  # looping disabled by default
 parser.add_argument('--delay', '-d', help='Delay in seconds before transmitting the next batch',
 required=False, type=int, default=5)  # default delay is 5 seconds
+
+parser.add_argument(
+    '--mode', '-m',
+    help = 'Mode of operation, Training [train] or Testing [test]',
+    required = False,
+    type = str,
+    default = 'train'
+)
 
 TCP_IP = "localhost"
 TCP_PORT = 6100
@@ -152,6 +161,7 @@ def streamDataset(tcp_connection, dataset_type):    # function to stream a datas
 
 
 def streamCSVFile(tcp_connection, input_file):    # stream a CSV file to Spark
+    if mode == 'test': input_file = 'spam/test.csv'
     '''
     Each batch is streamed as a JSON file and has the following shape. 
     The outer indices are the indices of each row in a batch and go from 0 - batch_size-1
@@ -240,6 +250,7 @@ if __name__ == '__main__':
     batch_size = args.batch_size
     endless = args.endless
     sleepTime = args.delay
+    mode = args.mode
 
     tcp_connection, _ = connectTCP()
 

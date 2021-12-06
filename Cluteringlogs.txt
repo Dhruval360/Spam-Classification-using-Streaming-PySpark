@@ -1,0 +1,13 @@
+
+Classification,ActualClass
+0,'Ham'
+1,'Ham'
+0,'Spam'
+0,'Ham'
+1,'Ham'
+0,'Spam'
+0,'Ham'
+1,'Ham'
+0,'Spam'
+
+Plot bar graphs: Showing assuming 0 as Ham what is the error? Assuming 1 as Ham what is the error?

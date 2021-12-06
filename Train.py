@@ -7,7 +7,7 @@ import re
 import joblib
 import argparse
 import numpy as np
-from nltk.corpus import stopwords
+
 from nltk.stem.porter import PorterStemmer
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
@@ -15,11 +15,6 @@ from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import SGDClassifier, Perceptron
 from sklearn.neural_network import MLPClassifier
-
-# from pyspark.ml import Pipeline
-# from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAssembler
-# from pyspark.ml.feature import StopWordsRemover, Word2Vec, RegexTokenizer
-# from pyspark.ml.classification import LogisticRegression
 
 # Color coding the output to make it easier to find amongst the verbose output of Spark
 RED = '\033[91m'
@@ -56,58 +51,54 @@ models = {
 }
 
 
-patterns = (
+patterns = ( # Comment what each pattern does
     re.compile(r'\\r\\n'),
     re.compile(r'[^a-zA-Z]'),
     re.compile(r'\s+'),
     re.compile(r'^b\s+'),
 )
 
-def proc(record):
+def preProcess(record): # Why import stopwords here?
+    from nltk.corpus import stopwords
+
     review = record.lower()
     for pattern in patterns: review = pattern.sub(' ', review)
-    
+
     global stemmer
     review = [stemmer.stem(word) for word in review.split() if word not in stopwords.words('english')]
     review = ' '.join(review)
     return review
 
-# proc = np.vectorize(proc)
-
-from multiprocessing import Pool, cpu_count
-pool = Pool(cpu_count()) 
-
-
-def preProcess(X):
-    # corpus = proc(X.reshape((len(X),)))
-    corpus = list(pool.map(proc, X.reshape((len(X),))))    
-
-    # Creating the Bag of Words model
+def readStream(rdd):
     global hvec
-    X = hvec.fit_transform(corpus)
-    return X.toarray()
-
-batchNum = 1
-def trainBatch(rdd):
-    if not rdd.isEmpty():
-        df = (
+    df = (
             spark.read.json(rdd, multiLine = True)
             .withColumn("data", explode(arrays_zip("feature0", "feature1", "feature2")))
             .select("data.feature0", "data.feature1", "data.feature2")
         )
 
-        df = df.withColumn('joint', concat(col('feature0'), lit(" "), col('feature1')))
-        X = preProcess(np.array(df.select("joint").collect()))
-        y = np.array(
-            df.withColumn("feature2", when(col("feature2") == 'spam', 1).otherwise(0))
-                .select("feature2")
-                .collect()
-        )    
+    df = df.withColumn('joint', concat(col('feature0'), lit(" "), col('feature1')))
+    X = hvec.fit_transform(
+            np.array(
+                df.select("joint").rdd.map(lambda x : preProcess(str(x))).collect()
+            )
+        ).toarray()
+    y = np.array(
+        df.withColumn("feature2", when(col("feature2") == 'spam', 1).otherwise(0))
+            .select("feature2")
+            .collect()
+    )    
+    return X, y
+
+batchNum = 1
+def trainBatch(rdd):
+    if not rdd.isEmpty():
+        X, y = readStream(rdd)
 
         global models, batchNum
 
         for model in models:
-            models[model] = models[model].partial_fit(X, y.reshape((len(y),)), np.unique(y))
+            models[model] = models[model].partial_fit(X, y.reshape((len(y),)), np.unique(y)) # Why reshape
             pred = models[model].predict(X)
 
             accuracy = accuracy_score(y, pred)
@@ -124,7 +115,7 @@ def trainBatch(rdd):
             print(conf_m)
             print("\n\nSaving Model to disk...")
 
-            joblib.dump(models[model], f"./TrainingLogs/{model}/Models/{batchNum}.sav")
+            joblib.dump(models[model], f"./TrainingLogs/{model}/Models/{batchNum}.sav") # sav?
             
             print("Model saved to disk")
             print(RESET)
@@ -143,28 +134,21 @@ def trainBatch(rdd):
 
         batchNum += 1
 
-# TODO: Use rdd.map for regex instead of using multiprocessing
-
 numBatches = None
+
+'''
+TODO:
+For each model (have batch number as argument), log the testing accuracy over the entire testing dataset
+'''
 def testBatch(rdd): # TODO
     if not rdd.isEmpty():
-        df = (
-            spark.read.json(rdd, multiLine = True)
-            .withColumn("data", explode(arrays_zip("feature0", "feature1", "feature2")))
-            .select("data.feature1", "data.feature2")
-        )
-
-        X = preProcess(df.feature1, df.count())
-        y = np.array(
-            df.withColumn("feature2", when(col("feature2") == 'spam', 1).otherwise(0))
-            .select("feature2")
-            .collect()
-        )
+        X, y = readStream(rdd)
 
         global numBatches
         for model in models:
+            ## Chahnge this completely
+            curModel = joblib.load(f"./TrainingLogs/{model}/Models/{batchNum}.sav")
             for batchNum in range(numBatches):
-                curModel = joblib.load(f"./TrainingLogs/{model}/Models/{batchNum}.sav")
                 pred = curModel.predict(X)
 
                 accuracy = accuracy_score(y, pred)
