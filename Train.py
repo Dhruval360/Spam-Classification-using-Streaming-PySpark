@@ -381,7 +381,7 @@ if __name__ == "__main__":
                     logfiles[model].flush()
                     classifiers[model] = joblib.load(f"./Logs/{model}/Models/{model_num}.sav")
 
-        dstream.foreachRDD(lambda rdd: testBatch(rdd, cluster, model_num, clusterlogfile, logfiles))
+        dstream.foreachRDD(lambda rdd: testBatch(rdd, cluster, clusterlogfile, logfiles))
     
     else: raise("Invalid argument to the argument mode of operation: Use '-m train' or '-m test'")
 
