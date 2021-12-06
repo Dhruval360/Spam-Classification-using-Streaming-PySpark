@@ -183,9 +183,9 @@ def trainCluster(rdd):
         recall_spam_0 = recall_score(y, pred, labels = np.unique(y))
         conf_m_spam_0 = confusion_matrix(y, pred)
 
-        print(GREEN)
         print(f"Model = Clustering")
         
+        print(GREEN)
         print(f"MEASURES WHEN SPAM IS ENCODED AS 1")
         print(f"accuracy: %.3f" %accuracy_spam_0)
         print(f"precision: %.3f" %precision_spam_0)
@@ -195,9 +195,11 @@ def trainCluster(rdd):
         
         print(RESET)
         print(RED)
-
-        y = [~i for i in y] 
-
+        for i in y:
+            if(i[0] == 1):
+                i[0] = 0
+            else:
+                i[0] = 1
         print(f"MEASURES WHEN SPAM IS ENCODED AS 1")
 
         accuracy_spam_1 = accuracy_score(y, pred)
@@ -214,8 +216,8 @@ def trainCluster(rdd):
 
         print("\n\nSaving Model to disk...")
 
-        joblib.dump(classifiers[model], f"./Logs/Clustering/Models/{batchNum}.sav") # sav?
-        joblib.dump(classifiers[model], f"./Logs/Clustering/final_model.sav")
+        joblib.dump(clustering_model, f"./Logs/Clustering/Models/{batchNum}.sav") # sav?
+        shutil.copyfile(f"./Logs/Clustering/Models/{batchNum}.sav", f"./Logs/Clustering/final_model.sav")
         print("Model saved to disk")
         print(RESET)
         
@@ -235,7 +237,7 @@ Output:
     Logs the information [batch number, prediction value, actual value] into the csv file in TrainLogs for each classifier
 '''
 batchNum = 1
-def testBatch(rdd, model_num = None, cluster = 0):
+def testBatch(rdd, cluster = 0, model_num = None):
     if not rdd.isEmpty():
         
         global batchNum, classifiers
