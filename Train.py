@@ -23,7 +23,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.cluster import MiniBatchKMeans
 
 # Color coding the output to make it easier to find amongst the verbose output of Spark
-RED = '\033[33m'
+ORANGE = '\033[33m'
 RESET = '\033[0m'
 GREEN = '\033[92m'
 
@@ -123,12 +123,13 @@ def trainBatch(rdd):
     if not rdd.isEmpty():
         global classifiers, batchNum
         X, y = readStream(rdd)
-        print(GREEN)
-        print(f"Processing Batch {batchNum} of size {len(X)}")
+        print(ORANGE)
+        print(f"Processing Batch {batchNum} of size {len(X)}\n")
 
 
 
         for model in classifiers:
+            print(GREEN)
             classifiers[model] = classifiers[model].partial_fit(X, y.reshape((len(y),)), np.unique(y))
             pred = classifiers[model].predict(X)
 
@@ -149,6 +150,7 @@ def trainBatch(rdd):
             shutil.copyfile(f"./Logs/{model}/Models/{batchNum}.sav", f"./Logs/{model}/final_model.sav")
             
             print("Model saved to disk!")
+            print(RESET)
 
             # with open(f"./Logs/{model}/TrainLogs/logs.txt", "a") as f:
             #     f.write(f"Batch {batchNum}")
@@ -162,7 +164,6 @@ def trainBatch(rdd):
             with open(f"./Logs/{model}/TrainLogs/logs.csv", "a") as f:
                 f.write(f"{batchNum},{accuracy},{precision},{recall}\n")
         
-        print(RESET)
         batchNum += 1
 
 numBatches = None
@@ -172,8 +173,8 @@ def trainCluster(rdd):
     if not rdd.isEmpty():
         global clustering_model, batchNum
         X, y = readStream(rdd)
-        print(GREEN)
-        print(f"Processing Batch {batchNum} of size {len(X)}")
+        print(ORANGE)
+        print(f"Processing Batch {batchNum} of size {len(X)}\n")
 
 
         clustering_model = clustering_model.partial_fit(X)
@@ -184,6 +185,7 @@ def trainCluster(rdd):
         recall_spam_1 = recall_score(y, pred, labels = np.unique(y))
         conf_m_spam_1 = confusion_matrix(y, pred)
         
+        print(GREEN)
         print(f"Model = Clustering")
         print(f"MEASURES WHEN SPAM IS ENCODED AS 1")
         print(f"accuracy: %.3f" %accuracy_spam_1)
@@ -192,7 +194,7 @@ def trainCluster(rdd):
         print(f"confusion matrix: ")
         print(conf_m_spam_1)
         
-        print(RED)
+        print(ORANGE)
         for i in y:
             if(i[0] == 1):
                 i[0] = 0
@@ -243,12 +245,12 @@ def testBatch(rdd, cluster = 0, model_num = None):
         # Read stream and pre-process it
         X, gt_values = readStream(rdd)
 
-        print(GREEN)
-        print(f"Processing Batch {batchNum} of size {len(X)}")
+        print(ORANGE)
+        print(f"Processing Batch {batchNum} of size {len(X)}\n")
         
+        print(GREEN)
         if(cluster == 0):
             # For all the classifiers load the right model, predict on the test rdd (i.e. X), Log to file
-            print(f"Processing Batch {batchNum}")
             for model in classifiers:
                 if(model_num is None):
                     final_model = joblib.load(f"./Logs/{model}/final_model.sav")
