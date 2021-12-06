@@ -34,10 +34,12 @@ stemmer = PorterStemmer() # Stems the words. Eg: Converts running, ran, run to r
 
 '''
 Multinomial Naive Bayes:Bayesian classifier for discrete features.
-alpha -> laplace smoothing
 
+Perceptron: linear perceptron classifier
+
+Multi layer Perceptron: multi layer perceptron classifier
 '''
-classifiers = { # TODO: Explain Models
+classifiers = {
     'Multinomial Naive Bayes': MultinomialNB(),
     'SGD Classifier': SGDClassifier(
                             loss = 'log', 
@@ -91,9 +93,14 @@ def readStream(rdd):
     Returns Features X and Labels y
     '''
     global hvec
+    '''
+    Array_zip combines the ith position elements of all three features per json into a list.
+    Hence there would be a list of such lists at the end of Array_Zip.
+    Explode converts that into three columns with rows as values
+    '''
     df = (
             spark.read.json(rdd, multiLine = True)
-            .withColumn("data", explode(arrays_zip("feature0", "feature1", "feature2"))) # TODO: Check what explode does
+            .withColumn("data", explode(arrays_zip("feature0", "feature1", "feature2")))
             .select("data.feature0", "data.feature1", "data.feature2")
         )
 
