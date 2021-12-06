@@ -231,49 +231,49 @@ batchNum = 1
 def testBatch(rdd, model_num = None, cluster = 0):
     if not rdd.isEmpty():
         
-        global batchNum
+        global batchNum, classifiers
 
         # Read stream and pre-process it
         X, gt_values = readStream(rdd)
         
+        
+        print(GREEN)
         if(cluster == 0):
             # For all the classifiers load the right model, predict on the test rdd (i.e. X), Log to file
+            print(f"Processing Batch {batchNum}")
             for model in classifiers:
-
-                if(model_num is not None):
+                if(model_num is None):
                     final_model = joblib.load(f"./Logs/{model}/final_model.sav")
                 else:
                     final_model = joblib.load(f"./Logs/{model}/Models/{model_num}.sav")
                 
-                prediction = final_model.predict(X)
+                predictions = final_model.predict(X)
 
-                print(GREEN)
                 print(f"Model = {model}")
 
                 with open(f"./Logs/{model}/TestLogs/logs.csv", "a") as f:
-                    for i in zip(prediction, gt_values):
+                    for i in zip(predictions, gt_values):
                         f.write(f"{batchNum},{i[0]},{i[1][0]}\n")
 
                 print(f"Successfully logged to file...\n")
-                print(RESET)
-            f.close()
+                
         else:
-            if(model_num is not None):
+            if(model_num is None):
                 final_model = joblib.load(f"./Logs/Clustering/final_model.sav")
             else:
                 final_model = joblib.load(f"./Logs/Clustering/Models/{model_num}.sav")
             
-            prediction = final_model.predict(X)
-
-            print(GREEN)
+            predictions = final_model.predict(X)
+        
             print(f"Model = Clustering")
 
             with open(f"./Logs/Clustering/TestLogs/logs.csv", "a") as f:
-                for i in zip(prediction, gt_values):
+                for i in zip(predictions, gt_values):
                     f.write(f"{batchNum},{i[0]},{i[1][0]}\n")
 
             print(f"Successfully logged to file...\n")
-            print(RESET)
+        
+        print(RESET)
         batchNum += 1
 
 parser = argparse.ArgumentParser(description = 'Trains and Tests multiple classifiers using PySpark')
@@ -315,23 +315,15 @@ if __name__ == "__main__":
     mode = args.mode
     cluster = args.clustering
 
-    if(args.clean): # Clear all logs and start afresh
+    if(args.clean): # Clear all logs
         for model in classifiers:
-            f = open(f"./Logs/{model}/TrainLogs/logs.csv", "w")
-            f.write("BatchNum,Accuracy,Precision,Recall\n")
-
-            f = open(f"./Logs/{model}/TestLogs/logs.csv", "w")
-            f.write("BatchNum,Prediction,GroundTruth\n")
+            with open(f"./Logs/{model}/TrainLogs/logs.csv", "w") as f: f.write("BatchNum,Accuracy,Precision,Recall\n")
+            with open(f"./Logs/{model}/TestLogs/logs.csv", "w") as f: f.write("BatchNum,Prediction,GroundTruth\n")
             
-            f.close()
-        
-        f = open(f"./Logs/Clustering/TrainLogs/logs.csv", "w")
-        f.write("batchNum,accuracy_spam_0,precision_spam_0,recall_spam_0,accuracy_spam_1,precision_spam_1,recall_spam_1\n")
-        
-        f = open(f"./Logs/Clustering/TestLogs/logs.csv", "w")
-        f.write("BatchNum,Prediction,GroundTruth\n")
+        with open(f"./Logs/Clustering/TrainLogs/logs.csv", "w") as f: f.write("batchNum,accuracy_spam_0,precision_spam_0,recall_spam_0,accuracy_spam_1,precision_spam_1,recall_spam_1\n")
+        with open(f"./Logs/Clustering/TestLogs/logs.csv", "w") as f: f.write("BatchNum,Prediction,GroundTruth\n")
 
-        print(f"\n{GREEN}Cleaned the Logs{RESET}\n")
+        print(f"\n{GREEN}Cleared the Logs{RESET}\n")
         exit(0)
 
     # Initializing the spark session
