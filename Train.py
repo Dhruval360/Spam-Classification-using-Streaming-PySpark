@@ -27,9 +27,16 @@ RED = '\033[91m'
 RESET = '\033[0m'
 GREEN = '\033[92m'
 
-hvec = HashingVectorizer(n_features = 2**9, alternate_sign = False) # TODO: Explain what this does
+#tokens are encded as numerical indexes using hash function but once hashed,multiple tokens can map to same index so they cannot be retrieved.
+#2**9 n_features means the number of feature columns is 2**9.
+hvec = HashingVectorizer(n_features = 2**9, alternate_sign = False)
 stemmer = PorterStemmer() # Stems the words. Eg: Converts running, ran, run to run.
 
+'''
+Multinomial Naive Bayes:Bayesian classifier for discrete features.
+alpha -> laplace smoothing
+
+'''
 classifiers = { # TODO: Explain Models
     'Multinomial Naive Bayes': MultinomialNB(),
     'SGD Classifier': SGDClassifier(
