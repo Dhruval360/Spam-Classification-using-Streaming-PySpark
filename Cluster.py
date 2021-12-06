@@ -10,11 +10,9 @@ import numpy as np
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 
+from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 from sklearn.feature_extraction.text import HashingVectorizer
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import SGDClassifier, Perceptron
-from sklearn.neural_network import MLPClassifier
 
 # from pyspark.ml import Pipeline
 # from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAssembler
@@ -30,29 +28,7 @@ hvec = HashingVectorizer(n_features = 2**9, alternate_sign = False)
 stemmer = PorterStemmer()
 
 models = {
-    'Multinomial Naive Bayes': MultinomialNB(),
-    'SGD Classifier': SGDClassifier(
-                            loss = 'log', 
-                            alpha = 0.0001, 
-                            max_iter = 3000, 
-                            tol = None, 
-                            shuffle = True, 
-                            verbose = 0, 
-                            learning_rate = 'adaptive', 
-                            eta0 = 0.01, 
-                            early_stopping = False
-                      ),
-    'Perceptron': Perceptron(),
-    'Multi Layer Perceptron': MLPClassifier(
-                                activation = 'tanh', 
-                                learning_rate = 'adaptive',
-                                alpha = 1e-4, 
-                                hidden_layer_sizes = (15,), 
-                                random_state = 1, 
-                                verbose = False,
-                                max_iter = 1, 
-                                warm_start = True
-                              )
+    'Clustering' : MiniBatchKMeans(n_clusters=2, random_state=0)
 }
 
 
@@ -95,7 +71,6 @@ def trainBatch(rdd):
             .withColumn("data", explode(arrays_zip("feature0", "feature1", "feature2")))
             .select("data.feature0", "data.feature1", "data.feature2")
         )
-
         df = df.withColumn('joint', concat(col('feature0'), lit(" "), col('feature1')))
         X = preProcess(np.array(df.select("joint").collect()))
         y = np.array(
@@ -107,7 +82,7 @@ def trainBatch(rdd):
         global models, batchNum
 
         for model in models:
-            models[model] = models[model].partial_fit(X, y.reshape((len(y),)), np.unique(y))
+            models[model] = models[model].partial_fit(X)
             pred = models[model].predict(X)
 
             accuracy = accuracy_score(y, pred)
@@ -142,8 +117,6 @@ def trainBatch(rdd):
                 f.write(f"{batchNum},{accuracy},{precision},{recall}\n")
 
         batchNum += 1
-
-# TODO: Use rdd.map for regex instead of using multiprocessing
 
 numBatches = None
 def testBatch(rdd): # TODO
