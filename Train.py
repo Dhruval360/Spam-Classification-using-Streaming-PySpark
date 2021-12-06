@@ -7,10 +7,12 @@ import re
 import joblib
 import argparse
 import numpy as np
+import warnings
+warnings.filterwarnings('ignore') # To ignore the UndefinedMetricWarning
 
 from nltk.stem.porter import PorterStemmer
 from nltk.corpus import stopwords
-engStopWords = stopwords.words('english')
+engStopWords = stopwords.words('english') # List of english stop words that would be used during preprocessing
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 from sklearn.feature_extraction.text import HashingVectorizer
@@ -53,47 +55,45 @@ models = { # TODO: Explain Models
 }
 
 patterns = ( 
-    re.compile(r'\\r\\n'),    # Select Carriage returns and new lines
+    re.compile(r'\\r\\n'),    # Select carriage returns and new lines
     re.compile(r'[^a-zA-Z]'), # Select anything that isn't an alphabet
     re.compile(r'\s+'),       # Select multiple consecutive spaces
-    re.compile(r'^b\s+'),     # Select Word boundaries before consecutive spaces
+    # re.compile(r'^b\s+'),     # Select Word boundaries before consecutive spaces
 )
-
 
 def preProcess(record):
     '''
-    Pre Processes text 
-    Substitutes Carriage returns, New lines, Non alphabetic characters and Multiple consecutive spaces with a signle space.
-    Stems the words in the cleaned text
-    Returns a preprocessed string
+    Performs Text Preprocessing
+    * Substitutes carriage returns, new lines, non alphabetic characters and multiple consecutive spaces with a single space ' '.
+    * Stems the words in the cleaned text
+    Returns the preprocessed string
     '''
-    review = record.lower()
-    for pattern in patterns: review = pattern.sub(' ', review)
+    text = record.lower()
+    for pattern in patterns: text = pattern.sub(' ', text)
 
     global stemmer
-    review = [stemmer.stem(word) for word in review.split() if word not in engStopWords]
-    review = ' '.join(review)
-    return review
+    return ' '.join([stemmer.stem(word) for word in text.split() if word not in engStopWords])
 
 def readStream(rdd):
     '''
-    Reads a JSON rdd into the given format
+    Reads a JSON rdd into a DataFrame, performs preprocessing
+    Returns Features X and Labels y
     '''
     global hvec
     df = (
             spark.read.json(rdd, multiLine = True)
-            .withColumn("data", explode(arrays_zip("feature0", "feature1", "feature2")))
+            .withColumn("data", explode(arrays_zip("feature0", "feature1", "feature2"))) # TODO: Check what explode does
             .select("data.feature0", "data.feature1", "data.feature2")
         )
 
-    df = df.withColumn('joint', concat(col('feature0'), lit(" "), col('feature1')))
-    X = hvec.fit_transform(
+    df = df.withColumn('joint', concat(col('feature0'), lit(" "), col('feature1'))) # Concatenating the Subject and the Message
+    X = hvec.fit_transform( # Fitting the HashVectorizer on the preprocessed strings
             np.array(
-                df.select("joint").rdd.map(lambda x : preProcess(str(x))).collect()
+                df.select("joint").rdd.map(lambda x : preProcess(str(x))).collect() # Preprocessing each Record parallely
             )
         ).toarray()
     y = np.array(
-        df.withColumn("feature2", when(col("feature2") == 'spam', 1).otherwise(0))
+        df.withColumn("feature2", when(col("feature2") == 'spam', 1).otherwise(0))  # Encoding spam and ham as 1 and 0 respectively
             .select("feature2")
             .collect()
     )    
@@ -101,13 +101,17 @@ def readStream(rdd):
 
 batchNum = 1
 def trainBatch(rdd):
+    '''
+    Trains Multiple models on the given batch of data.
+    Saves the trained models and logs the training metrics obtained.
+    '''
     if not rdd.isEmpty():
         X, y = readStream(rdd)
 
-        global models, batchNum
+        global models, batchNum # Models are fit partially for incremental learning
 
         for model in models:
-            models[model] = models[model].partial_fit(X, y.reshape((len(y),)), np.unique(y)) # Why reshape
+            models[model] = models[model].partial_fit(X, y.reshape((len(y),)), np.unique(y)) # TODO: Why reshape
             pred = models[model].predict(X)
 
             accuracy = accuracy_score(y, pred)
@@ -122,11 +126,11 @@ def trainBatch(rdd):
             print(f"recall: %.3f" %recall)
             print(f"confusion matrix: ")
             print(conf_m)
-            print("\n\nSaving Model to disk...")
+            print("\n\nSaving Model to disk... ", end = '')
 
-            joblib.dump(models[model], f"./Logs/{model}/Models/{batchNum}.sav") # sav?
+            joblib.dump(models[model], f"./Logs/{model}/Models/{batchNum}.sav") # Saving the trained model
             
-            print("Model saved to disk")
+            print("Model saved to disk!")
             print(RESET)
 
             # with open(f"./Logs/{model}/TrainLogs/logs.txt", "a") as f:
@@ -143,8 +147,6 @@ def trainBatch(rdd):
 
         batchNum += 1
 
-numBatches = None
-
 '''
 TODO:
 For each model (have batch number as argument), log the testing accuracy over the entire testing dataset
@@ -153,9 +155,9 @@ def testBatch(rdd): # TODO
     if not rdd.isEmpty():
         X, y = readStream(rdd)
 
-        global numBatches
         for model in models:
-            ## Chahnge this completely
+            ## Change this completely
+            numBatches = None
             curModel = joblib.load(f"./Logs/{model}/Models/{batchNum}.sav")
             for batchNum in range(numBatches):
                 pred = curModel.predict(X)
@@ -202,7 +204,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--clean', '-c',
-    help = 'Clear all logs and start a fresh training session',
+    help = 'Clear all logs',
     required = False,
     type = int,
     default = 0
@@ -215,7 +217,7 @@ if __name__ == "__main__":
     batchDuration = args.delay
     mode = args.mode
 
-    if(args.clean): # Clear all logs and start afresh
+    if(args.clean): # Clear all logs
         for model in models:
             f = open(f"./Logs/{model}/TrainLogs/logs.txt", "w")
             f.close()
@@ -223,7 +225,7 @@ if __name__ == "__main__":
             f.write("BatchNum,Accuracy,Precision,Recall\n")
             f.close()
         print(f"\n{GREEN}Cleaned the Logs{RESET}\n")
-        exit(0) # Will be removed later
+        exit(0)
 
     # Initializing the spark session
     sc = SparkContext(appName = "Spam Classifier")
@@ -233,11 +235,11 @@ if __name__ == "__main__":
     # Initializing the streaming context 
     ssc = StreamingContext(sc, batchDuration = batchDuration)
 
-    # Create a DStream that will connect to hostname:port, like localhost:9991
+    # Create a DStream that will connect to hostname:port
     dstream = ssc.socketTextStream("localhost", 6100)
     
-    if mode.lower() == 'train': dstream.foreachRDD(lambda rdd: trainBatch(rdd))
-    elif mode.lower() == 'test': dstream.foreachRDD(lambda rdd: testBatch(rdd))
+    if   mode.lower() == 'train': dstream.foreachRDD(lambda rdd: trainBatch(rdd))
+    elif mode.lower() == 'test' : dstream.foreachRDD(lambda rdd:  testBatch(rdd))
     else: raise("Invalid argument to the argument mode of operation: Use '-m train' or '-m test'")
 
     ssc.start()            # Start the computation
