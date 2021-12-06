@@ -1,1 +1,0 @@
-python3 Stream.py --file ./spam/train.csv

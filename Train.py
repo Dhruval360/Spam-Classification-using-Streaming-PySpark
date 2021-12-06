@@ -27,17 +27,15 @@ RED = '\033[91m'
 RESET = '\033[0m'
 GREEN = '\033[92m'
 
-#tokens are encded as numerical indexes using hash function but once hashed,multiple tokens can map to same index so they cannot be retrieved.
-#2**9 n_features means the number of feature columns is 2**9.
+# Tokens are encoded as numerical indices using hash function but once hashed, multiple tokens can map to same index so they cannot be retrieved.
+# Number of feature columns used is 512.
 hvec = HashingVectorizer(n_features = 2**9, alternate_sign = False)
 stemmer = PorterStemmer() # Stems the words. Eg: Converts running, ran, run to run.
 
 '''
-Multinomial Naive Bayes:Bayesian classifier for discrete features.
-
-Perceptron: linear perceptron classifier
-
-Multi layer Perceptron: multi layer perceptron classifier
+Multinomial Naive Bayes: Bayesian classifier for discrete features.
+Perceptron: Linear perceptron classifier
+Multi layer Perceptron: Multi layer perceptron classifier
 '''
 classifiers = {
     'Multinomial Naive Bayes': MultinomialNB(),
@@ -71,7 +69,6 @@ patterns = (
     re.compile(r'\\r\\n'),    # Select carriage returns and new lines
     re.compile(r'[^a-zA-Z]'), # Select anything that isn't an alphabet
     re.compile(r'\s+'),       # Select multiple consecutive spaces
-    # re.compile(r'^b\s+'),     # Select Word boundaries before consecutive spaces
 )
 
 def preProcess(record):
@@ -89,12 +86,12 @@ def preProcess(record):
 
 def readStream(rdd):
     '''
-    Reads a JSON rdd into a DataFrame, performs preprocessing
+    Reads a JSON RDD into a DataFrame, performs preprocessing
     Returns Features X and Labels y
     '''
     global hvec
     '''
-    Array_zip combines the ith position elements of all three features per json into a list.
+    Array_zip combines the ith position elements of all three features into a list.
     Hence there would be a list of such lists at the end of Array_Zip.
     Explode converts that into three columns with rows as values
     '''
@@ -178,30 +175,10 @@ def trainCluster(rdd):
         clustering_model = clustering_model.partial_fit(X) # Why reshape
         pred = clustering_model.predict(X)
 
-        accuracy_spam_0 = accuracy_score(y, pred)
-        precision_spam_0 = precision_score(y, pred, labels = np.unique(y))
-        recall_spam_0 = recall_score(y, pred, labels = np.unique(y))
-        conf_m_spam_0 = confusion_matrix(y, pred)
-
         print(f"Model = Clustering")
         
         print(GREEN)
-        print(f"MEASURES WHEN SPAM IS ENCODED AS 1")
-        print(f"accuracy: %.3f" %accuracy_spam_0)
-        print(f"precision: %.3f" %precision_spam_0)
-        print(f"recall: %.3f" %recall_spam_0)
-        print(f"confusion matrix: ")
-        print(conf_m_spam_0)
         
-        print(RESET)
-        print(RED)
-        for i in y:
-            if(i[0] == 1):
-                i[0] = 0
-            else:
-                i[0] = 1
-        print(f"MEASURES WHEN SPAM IS ENCODED AS 1")
-
         accuracy_spam_1 = accuracy_score(y, pred)
         precision_spam_1 = precision_score(y, pred, labels = np.unique(y))
         recall_spam_1 = recall_score(y, pred, labels = np.unique(y))
@@ -212,8 +189,29 @@ def trainCluster(rdd):
         print(f"recall: %.3f" %recall_spam_1)
         print(f"confusion matrix: ")
         print(conf_m_spam_1)
+        
+        print(RESET)
+        print(RED)
+        for i in y:
+            if(i[0] == 1):
+                i[0] = 0
+            else:
+                i[0] = 1
+        
+        print(f"MEASURES WHEN SPAM IS ENCODED AS 0")
 
+        accuracy_spam_0 = accuracy_score(y, pred)
+        precision_spam_0 = precision_score(y, pred, labels = np.unique(y))
+        recall_spam_0 = recall_score(y, pred, labels = np.unique(y))
+        conf_m_spam_0 = confusion_matrix(y, pred)
 
+        print(f"MEASURES WHEN SPAM IS ENCODED AS 1")
+        print(f"accuracy: %.3f" %accuracy_spam_0)
+        print(f"precision: %.3f" %precision_spam_0)
+        print(f"recall: %.3f" %recall_spam_0)
+        print(f"confusion matrix: ")
+        print(conf_m_spam_0)
+        
         print("\n\nSaving Model to disk...")
 
         joblib.dump(clustering_model, f"./Logs/Clustering/Models/{batchNum}.sav") # sav?
@@ -329,7 +327,7 @@ if __name__ == "__main__":
             with open(f"./Logs/{model}/TrainLogs/logs.csv", "w") as f: f.write("BatchNum,Accuracy,Precision,Recall\n")
             with open(f"./Logs/{model}/TestLogs/logs.csv", "w") as f: f.write("BatchNum,Prediction,GroundTruth\n")
             
-        with open(f"./Logs/Clustering/TrainLogs/logs.csv", "w") as f: f.write("batchNum,accuracy_spam_0,precision_spam_0,recall_spam_0,accuracy_spam_1,precision_spam_1,recall_spam_1\n")
+        with open(f"./Logs/Clustering/TrainLogs/logs.csv", "w") as f: f.write("batchNum,accuracy_spam_1,precision_spam_1,recall_spam_1,accuracy_spam_0,precision_spam_0,recall_spam_0\n")
         with open(f"./Logs/Clustering/TestLogs/logs.csv", "w") as f: f.write("BatchNum,Prediction,GroundTruth\n")
 
         print(f"\n{GREEN}Cleared the Logs{RESET}\n")
