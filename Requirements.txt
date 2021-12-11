@@ -1,0 +1,8 @@
+scikit-learn
+nltk
+pyspark
+pandas
+numpy
+joblib
+tqdm
+pickle
