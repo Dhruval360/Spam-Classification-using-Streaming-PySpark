@@ -39,20 +39,23 @@ Machine-Learning-with-Spark-Streaming
 │   └── train.csv
 ├── Stream.py                         [TCP Server that serves batches of the dataset as JSONs]
 ├── Train.py                          [PySpark program to train and test the aforementioned models]
-└── Plotter.py                        [Used for the analysis of the training and testing metrics obtained]
-
+├── Plot.ipynb                        [Notebook containing the analysis of the training and testing metrics obtained with batch size 100]
+├── Plot-200.ipynb                    [Notebook containing the analysis of the training and testing metrics obtained with batch size 200]
+└── Plotter.py                        [Used for the analysis of the training and testing metrics obtained (using PySpark)]
 ```
 
 ## Dependencies
 - Spark 3.1.2 (PySpark comes with the Spark installation)
 - Python 3 interpreter with all the packages in `Requirements.txt` installed
-## Running the programs
-Install the dependencies:
+
+## Installing the dependencies:
 
 ```bash
 $ python3 -m pip install -r Requirements.txt
 $ python3 -c "exec(\"import nltk\nnltk.download('stopwords')\")" ## Downloading stopwords
 ```
+## Running the program on a single Spark worker
+
 
 Run the following command to print the help doc for the programs:
 ```bash
@@ -62,4 +65,7 @@ $ spark-submit Train.py --help  ## This assumes spark has been added to path
 
 Run the `Stream.py` program in one terminal (or in the background) and `Train.py` (using spark-submit) in another for training the aforementioned spam classifiers on the dataset provided in the repo.
 
-## NOTE: Many files crucial for running the program are currently missing from the repo and will be added after the plagiarism check is complete.
+## Running the program on multiple Spark workers
+```
+Coming soon...
+```
