@@ -3,7 +3,8 @@ A project that involves collecting streaming email data over a TCP socket, and t
 
 This project was submitted as part of the final project of the Big Data course (UE19CS322) at PES University, Bengaluru by the team `BD_123_272_313_393`
 #### Authors 
-[Chandradhar Rao](https://github.com/chandradharrao) , [Dhruval PB](https://github.com/Dhruval360) , [Mihir M Kestur](https://github.com/mihirkestur) , [Rohit R](https://github.com/sir-rohitravindra)
+[Chandradhar Rao](https://github.com/chandradharrao) , [Dhruval PB](https://github.com/Dhruval360) , [Mihir M Kestur](https://github.com/mihirkestur)
+
 ## Project Structure
 ```
 Machine-Learning-with-Spark-Streaming
